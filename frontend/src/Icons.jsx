@@ -16,6 +16,7 @@ export default function Icon({ name, ...props }) {
     close: <path d="m7 7 10 10M7 17 17 7" />,
     chevron: <path d="m7 10 5 5 5-5" />,
     history: <><path d="M3 11a9 9 0 1 1 2.5 7M3 5v6h6" /><path d="M12 7v5l3 2" /></>,
+    click: <><path d="m7 3 12 9-6 1-3 6L7 3Z" /><path d="m4 4-2-2m11 0v3m-10 7h3" /></>,
   };
   return <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" focusable="false" {...props}>{paths[name]}</svg>;
 }

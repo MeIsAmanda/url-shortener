@@ -1,4 +1,9 @@
 import { expect, test } from '@playwright/test';
+test.beforeEach(async ({ page }) => {
+  await page.route('**/api/auth/session', route => route.fulfill({
+    status: 200, json: { user: null, googleSignInEnabled: false, csrfToken: 'guest-token' },
+  }));
+});
 
 const originalUrl = `https://example.com/${'a-long-destination-'.repeat(12)}?campaign=demo&x=1#section`;
 const shortUrl = 'http://localhost:8080/s/Abc1234';
@@ -20,6 +25,8 @@ for (const [width, height] of [[320, 780], [360, 900], [390, 900], [768, 900], [
     await page.goto('/');
     await expect(page).toHaveTitle('Sniply — Small links, ready to share');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
+    await expect(page.getByRole('button', { name: 'Snip my link' })).toBeEnabled();
+    await page.evaluate(() => document.fonts.ready);
     await expect(page.getByText('the little link studio', { exact: true })).toHaveCount(0);
     const inputBox = await page.getByRole('textbox', { name: 'Put your long URL here!' }).boundingBox();
     const confettiBox = await page.locator('.scene-confetti').boundingBox();

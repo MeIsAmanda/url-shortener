@@ -95,3 +95,23 @@ test('corrects a validation error then preserves encoded input through a real re
   expect(rejected.status()).toBe(400);
   expect((await rejected.json()).code).toBe('INVALID_URL');
 });
+
+test('real session endpoints protect account history and expired-account creation', async ({ page }) => {
+  await page.goto('/');
+  const session = await page.request.get('/api/auth/session');
+  expect(session.status()).toBe(200);
+  expect(session.headers()['cache-control']).toBe('no-store');
+  const state = await session.json();
+  expect(state.user).toBeNull();
+  expect(typeof state.csrfToken).toBe('string');
+  expect(typeof state.googleSignInEnabled).toBe('boolean');
+  const privateLinks = await page.request.get('/api/account/links');
+  expect(privateLinks.status()).toBe(401);
+  const creation = await page.request.post('/api/urls', {
+    headers: { 'X-Sniply-Account': 'true' },
+    data: { originalUrl: 'https://example.com/should-not-be-anonymous' },
+  });
+  expect(creation.status()).toBe(401);
+  const logout = await page.request.post('/api/auth/logout');
+  expect(logout.status()).toBe(403);
+});

@@ -19,6 +19,10 @@ public class ShortLink implements Persistable<Long> {
 
     @Column(nullable = false, updatable = false)
     private Instant createdAt;
+    @Column
+    private Long ownerId;
+    @Column(nullable = false)
+    private long clickCount;
 
     @Transient
     private boolean newEntity = true;
@@ -26,12 +30,17 @@ public class ShortLink implements Persistable<Long> {
     protected ShortLink() { }
 
     public ShortLink(long id, String code, String originalUrl) {
+        this(id, code, originalUrl, null);
+    }
+
+    public ShortLink(long id, String code, String originalUrl, Long ownerId) {
         if (id <= 0) {
             throw new IllegalArgumentException("Link ID must be positive.");
         }
         this.id = id;
         this.code = code;
         this.originalUrl = originalUrl;
+        this.ownerId = ownerId;
         this.createdAt = Instant.now();
     }
 
@@ -49,4 +58,7 @@ public class ShortLink implements Persistable<Long> {
 
     public String getCode() { return code; }
     public String getOriginalUrl() { return originalUrl; }
+    public Long getOwnerId() { return ownerId; }
+    public Instant getCreatedAt() { return createdAt; }
+    public long getClickCount() { return clickCount; }
 }

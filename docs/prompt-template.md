@@ -14,6 +14,7 @@ I am building Sniply, a URL shortener for a technical assessment.
 - Link IDs: database sequence followed by Base62 encoding; Flyway migrations preserve legacy aliases.
 - Frontend: React with Vite, JavaScript, and CSS; a responsive scissors-themed page with a short submission animation and native pixel-art cursor.
 - Recent snips: latest 20 successful links in localStorage, beside the tool on desktop and below it on smaller screens. History removal does not delete backend mappings. See [recent-snips.md](recent-snips.md).
+- Accounts: optional Google OAuth2/OIDC sign-in, server sessions/CSRF, V4 account ownership, paginated My links with creation dates and atomic GET redirect counts. Guest history is separate; anonymous links are not auto-claimed. See [accounts.md](accounts.md).
 - Destination policy: validate HTTP(S) format, recognized domain/TLD, percent escapes, no raw whitespace, and a 2,048-character maximum. Store accepted input unchanged; generated output need not be shorter. See [url-validation.md](url-validation.md).
 - Form convenience: visibly add https:// to a missing protocol during bare-hostname keyboard entry/paste, with blur/submit as a fallback before validation. Preserve explicit schemes; direct API input still requires HTTP(S).
 

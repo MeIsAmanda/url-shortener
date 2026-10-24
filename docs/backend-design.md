@@ -51,6 +51,12 @@ Codes grow as numbers grow, up to 11 characters for a positive Java long. There 
 
 The ID-source interface is an in-process boundary. It does not introduce another network service or prove horizontal scalability. Embedded H2 remains a single-instance local choice.
 
+## Google accounts and redirect counts
+
+Google OAuth2/OIDC sign-in now creates or restores a local account by verified Google subject. Signed-in creation gets its owner ID from the backend principal, with CSRF protection; anonymous creation remains public and unowned. V4 adds the accounts table, nullable owner column, zero-initialized click counter, and owner/history index. A private cursor-paginated endpoint filters by the authenticated owner and returns server creation dates and counts. Old anonymous/browser links are not automatically assigned.
+
+GET redirect resolution performs an atomic `click_count = click_count + 1` update before returning a no-store 302. HEAD and unknown codes do not increment counts. These totals include repeat visits and bots; they are not unique-human analytics. The extra database write has not been benchmarked. See [accounts.md](accounts.md) for OAuth setup, session behavior, counters, and testing limits.
+
 ## Persistence, gaps, and failures
 
 H2 is the embedded relational database used by this project. The default `jdbc:h2:file:./data/shortener` stores data in `backend/data/shortener.mv.db` when the backend is launched from `backend/`. Restarting from the same directory with the same database URL preserves mappings, schema history, and sequence state. A `jdbc:h2:mem:...` URL instead uses temporary in-memory storage, as in API/live-browser tests.
@@ -101,4 +107,4 @@ Spring Boot's Flyway starter provides startup integration. [Spring Boot database
 
 The earlier notes about database checks also need precision: a sequence removes the need to check a candidate before insertion, but the database still enforces the unique indexes. The old implementation already avoided a pre-insert existence query.
 
-Sequential public codes are predictable and enumerable; they do not provide authorization or confidentiality. No throughput or latency improvement is claimed without measurement. Security scanning, load/stress testing, distributed infrastructure, click analytics, expiry, and link status remain later work.
+Sequential public codes are predictable and enumerable; they do not provide authorization or confidentiality. Private account history is separately authenticated; redirects remain public. No throughput or latency improvement is claimed without measurement. Basic redirect counters are implemented; security scanning, load/stress testing, distributed infrastructure, detailed visitor analytics, expiry, and link status remain later work.

@@ -52,6 +52,8 @@ The field is labelled **Put your long URL here!** with a curly arrow. Confetti s
 
 **Recent snips** keeps the latest 20 successful links in this browser: beside the tool on desktop (1,000px and wider), below it on smaller screens. Copy, remove, or clear entries; they survive normal reloads through localStorage. Clearing this list does not delete backend links. Different browsers/devices or frontend origins have separate histories. See [how recent snips work](docs/recent-snips.md).
 
+**Google accounts:** configure the [Google sign-in setup](docs/accounts.md), then Sign in with Google creates an account automatically. Links created while signed in appear in **My links** with their server creation date and click count, available across devices after login. Refresh or return to the tab to update counts; Load older links pages through history. Anonymous links are not automatically assigned to an account. Sign-in is disabled until your OAuth credentials are configured; guest shortening still works.
+
 Vite forwards `/api` and `/s/` requests to `http://127.0.0.1:8080`, so local development needs no broad CORS configuration. If your backend uses another port, set `BACKEND_PROXY_TARGET` before starting Vite, for example `$env:BACKEND_PROXY_TARGET = 'http://127.0.0.1:8081'` in PowerShell.
 
 To inspect the frontend build locally:
@@ -108,7 +110,7 @@ Windows PowerShell:
 
 Service tests use mocks, API tests use an isolated in-memory H2 database, and migration tests use temporary file databases. They do not modify saved development links. The Mockito subclass mock maker is configured because these tests only mock interfaces and non-final classes; it avoids requiring runtime Java agent attachment.
 
-Run `.\mvnw.cmd verify` on Windows (or `./mvnw verify` on macOS/Linux) for the complete backend check: 122 validator/unit/API/migration cases, executable JAR packaging, and one packaged-application restart test. The restart test starts and stops its own backend processes using a temporary H2 file and an available port. Migration tests also use temporary files; no development data is opened.
+Run `.\mvnw.cmd verify` on Windows (or `./mvnw verify` on macOS/Linux) for the complete backend check: 135 account/security/validator/unit/API/migration cases, executable JAR packaging, and one packaged-application restart test. The restart test starts and stops its own backend processes using a temporary H2 file and an available port. Migration tests also use temporary files; no development data is opened.
 
 From `frontend/`:
 
@@ -132,7 +134,7 @@ The workflow is already defined in [.github/workflows/checks.yml](.github/workfl
 After the source is pushed, the workflow runs on pushes and pull requests, and supports a manual run from the Actions tab:
 
 - **Backend tests and build:** Java 25, Maven tests, packaging, and the packaged-application restart check (`verify`).
-- **Frontend tests and build:** Node 24, locked dependency installation, component/API-client/URL-policy/history tests, build, and thirty-three Chromium browser checks, including recent-snips persistence/scroll containment, protocol completion, URL validation, and animation/reduced-motion behavior.
+- **Frontend tests and build:** Node 24, locked dependency installation, component/API-client/account/URL-policy/history tests, build, and thirty-six Chromium browser checks, including account UI/logout, recent-snips scroll containment, protocol completion, URL validation, and animation/reduced-motion behavior. Google identities/session responses are mocked in isolated tests; no Google credentials are needed in CI.
 
 You do not need to recreate the workflow through GitHub's website. If Actions is disabled by repository or organisation policy, enable or request access there. Requiring the two checks before merging is a separate branch-rules setting you can configure on GitHub after the checks have run. No secrets or deployment credentials are needed for this workflow.
 
@@ -147,6 +149,11 @@ The workflow is prepared; confirm the latest revision's results in GitHub after 
 | DATABASE_URL | jdbc:h2:file:./data/shortener | Database connection |
 | DATABASE_USERNAME | sa | Database username |
 | DATABASE_PASSWORD | empty | Local development database password |
+| FRONTEND_BASE_URL | http://localhost:5173 | Trusted post-login origin; Google callback uses this origin |
+| GOOGLE_LOGIN_ENABLED | false | Enable Google OAuth after configuring credentials |
+| GOOGLE_CLIENT_ID | empty | Google Web application OAuth client ID, backend only |
+| GOOGLE_CLIENT_SECRET | empty | Google client secret, backend only; never commit it |
+| SESSION_COOKIE_SECURE | false | Set true for HTTPS hosting; false supports local HTTP development |
 
 `PUBLIC_BASE_URL` must be an HTTP(S) origin, without a path, query, credentials, or fragment. It must point to a reachable backend route. When using a phone, localhost refers to the phone itself; configure the computer's reachable address and network access for later device testing. The generated URL is returned regardless of whether it is shorter than the input.
 
@@ -161,6 +168,9 @@ The empty database password is for a local demonstration. Configure credentials 
 | Invalid destination or more than 2,048 characters | 400 with INVALID_URL |
 | Malformed JSON | 400 with INVALID_REQUEST |
 | Unknown short code | 404 with LINK_NOT_FOUND |
+| GET /api/auth/session | User or null, sign-in availability, and CSRF token |
+| GET /api/account/links | Signed-in owner's links, creation dates, click counts, and pagination cursor; otherwise 401 |
+| POST /api/auth/logout | CSRF-protected session logout; 204 |
 
 - New destinations must be HTTP(S) URLs with a recognized domain/TLD, valid percent escapes, no raw whitespace, and at most 2,048 characters. Accepted URLs are stored exactly as supplied; they are not trimmed or normalized. Localhost, IP-only destinations, credentials, and raw Unicode are rejected. See [the complete validation policy](docs/url-validation.md), including Punycode/encoded input support.
 - Generated URLs are returned even when they are equal in length or longer than the input.
@@ -168,6 +178,8 @@ The empty database password is for a local demonstration. Configure credentials 
 - Destination path, case, query string, and fragment are preserved.
 - The server never fetches destinations. Successfully saving a string does not guarantee that it can be used as a redirect destination.
 - Repeated submissions create new mappings.
+- Signed-in creation uses server-verified Google identity for ownership and requires CSRF protection. Guests can still create unowned mappings. Session/account responses use no-store; sign-out does not delete links.
+- Public GET redirects increment a database counter atomically, including repeats and bots; HEAD/unknown-code requests do not. Counts start at zero on upgrade and are not unique-human analytics. Redirects use no-store.
 - New links use a positive database-sequence ID encoded as Base62 (`0–9`, `A–Z`, `a–z`). Codes are case-sensitive, unpadded, and 1–11 characters long. A fresh database starts with `1`; existing databases may start higher to preserve old links.
 - Validation happens before ID allocation; invalid URLs consume no ID. Failures after allocation can leave gaps; allocated IDs are not recycled. Database failures are returned as server errors rather than retried as code collisions.
 - The database retains both primary-key and code uniqueness constraints. Existing seven-character aliases keep their stored destinations, including aliases with leading zeros.
@@ -179,6 +191,8 @@ Flyway applies versioned H2 migrations at startup; Hibernate now validates the s
 H2 connections are initialized with `SET WRITE_DELAY 0` to remove its default delayed commit flushing, including with custom H2 URLs. This is a durability choice; its write-latency impact has not been measured.
 
 V1 adopts the original table. V2 expands the code column to 11 characters, removes identity-column generation, and creates `short_link_id_seq` above both existing row IDs and decoded legacy codes. V3 widens the destination column to CLOB without changing IDs or saved values. These migrations preserve mappings and prevent the new numeric range from colliding with legacy aliases. Subsequent starts use migration history and do not restart the sequence. Restoring the older application version also requires a compatible database restore; the older identity-based application cannot use the upgraded schema unchanged.
+
+V4 adds accounts, optional link ownership, click counters defaulting to zero, and an owner/history index. Existing mappings remain unowned and keep their codes/destinations/dates. Accounts, owned links, and counters persist in H2; session state is in backend memory, so a restart requires signing in again. Back up the stopped database before its first V4 startup.
 
 The current implementation uses embedded H2. It does not establish multi-instance capacity, and sequential codes can be guessed. The ID-source interface can support a future shared database, but that requires a tested deployment and allocator implementation. See [backend-design.md](docs/backend-design.md) for the flow, tradeoffs, and corrections to the Copilot analysis.
 
@@ -212,6 +226,7 @@ Local screenshots: [desktop landing page](docs/screenshots/landing-desktop.png),
 | [Backend design](docs/backend-design.md) | Sequence/Base62 flow, persistence, migrations, and design tradeoffs |
 | [URL validation](docs/url-validation.md) | Accepted formats, length limit, TLD snapshot, and availability policy |
 | [Recent snips](docs/recent-snips.md) | Browser history, localStorage, layout, clearing, and persistence limits |
+| [Google accounts](docs/accounts.md) | OAuth setup, private account history, creation dates, click definitions, and verification limits |
 | [Testing guide](docs/testing.md) | Suite boundaries, commands, and manual review checklist |
 | [Verification record](docs/verification.md) | Previously observed results, historical milestones, and unverified work |
 | [Prompt template](docs/prompt-template.md) | Reusable context and constraints for new changes |
@@ -219,4 +234,4 @@ Local screenshots: [desktop landing page](docs/screenshots/landing-desktop.png),
 
 ## Current limitations
 
-URL validation checks format and a bundled TLD snapshot; it does not prove domain registration, website availability, or safety. A strict-shortening guarantee is intentionally absent. No rate limiting, authentication, abuse detection, destination reputation checks, or total HTTP body size limit is implemented yet. Errors on unknown links currently return JSON rather than a browser-friendly page. Versioned migrations currently target H2; a production/shared database needs its own tested migrations and ID allocator. Security scans and load tests have not been run. Google Fonts are optional external styling requests; system fonts remain available if they cannot load. No public deployment or hosted CI result is claimed here.
+URL validation checks format and a bundled TLD snapshot; it does not prove domain registration, website availability, or safety. A strict-shortening guarantee is intentionally absent. Google login needs your OAuth client configuration and a real-provider manual check. No password login, account deletion, rate limiting, abuse detection, destination reputation checks, or total HTTP body size limit is implemented. Clicks are redirect-request counts, not unique visitors; each GET adds a database write with unmeasured latency impact. Errors on unknown links return JSON. Migrations target H2; multiple backend instances need tested shared database/session infrastructure. Security scans and load tests have not been run. Google Fonts are optional external styling requests; system fonts remain available if they cannot load. No public deployment or hosted CI result is claimed here.

@@ -6,6 +6,9 @@ import SnipInput from './SnipInput.jsx';
 import Icon from './Icons.jsx';
 import RecentSnips from './RecentSnips.jsx';
 import useSnipHistory from './useSnipHistory.js';
+import useAccount from './useAccount.js';
+import AccountMenu from './AccountMenu.jsx';
+import AccountLinks from './AccountLinks.jsx';
 
 export default function App() {
   const [input, setInput] = useState('');
@@ -18,13 +21,18 @@ export default function App() {
   const submitting = useRef(false);
   const resultVersion = useRef(0);
   const history = useSnipHistory();
+  const account = useAccount();
+  const [accountVersion, setAccountVersion] = useState(0);
+  const [accountError, setAccountError] = useState(
+    new URLSearchParams(window.location.search).get('login') === 'failed' ? 'Google sign-in didn’t complete. Please try again.' : null);
 
   async function handleSubmit(event) {
     event.preventDefault();
-    if (submitting.current) return;
+    if (submitting.current || account.status === 'loading') return;
     setResult(null);
     setCopyState('idle');
     resultVersion.current += 1;
+    const submissionVersion = resultVersion.current;
     setError(null);
     const destination = completeProtocol(input);
     if (destination !== input) setInput(destination);
@@ -39,11 +47,17 @@ export default function App() {
     submitting.current = true;
     // The illustration runs independently: never delay the API or its result.
     try {
-      const created = await createLink(destination);
+      const created = await createLink(destination, {
+        csrfToken: account.user ? account.csrfToken : undefined,
+        accountRequired: Boolean(account.user),
+      });
+      if (submissionVersion !== resultVersion.current) return;
       setResult(created);
-      history.remember(created);
+      if (account.user) setAccountVersion(value => value + 1);
+      else history.remember(created);
     } catch (failure) {
       setError({ message: failure.message, field: failure.fieldError });
+      if (failure.sessionExpired) account.refresh();
       inputRef.current.focus();
     } finally {
       submitting.current = false;
@@ -81,6 +95,14 @@ export default function App() {
     if (completed !== input) updateInput(completed);
   }
 
+  async function logout() {
+    setAccountError(null);
+    try {
+      await account.logout();
+      clearInput();
+    } catch (error) { setAccountError(error.message); }
+  }
+
   return (
     <div className="sniply-page">
       <a className="skip-link" href="#main">Skip to content</a>
@@ -89,7 +111,10 @@ export default function App() {
           <span className="brand-mark"><Icon name="scissors" /></span>
           sniply<span className="wordmark-dot">.</span>
         </a>
-        <span className="header-note"><Icon name="sparkles" /> a little internet magic</span>
+        <div className="header-actions">
+          <span className="header-note"><Icon name="sparkles" /> a little internet magic</span>
+          <AccountMenu account={account} onLogout={logout} />
+        </div>
       </header>
 
       <main id="main" className="studio">
@@ -99,6 +124,7 @@ export default function App() {
           <span className="heading-doodle heading-doodle--right" aria-hidden="true"><Icon name="flower" /></span>
         </div>
 
+        {accountError && <p className="account-notice" role="alert">{accountError}</p>}
         <div className="sticker sticker--link" aria-hidden="true"><Icon name="link" /></div>
         <div className="sticker sticker--heart" aria-hidden="true"><Icon name="heart" /><span>with love</span></div>
 
@@ -126,7 +152,7 @@ export default function App() {
                   <span className="scene-caption" aria-hidden="true">{pending ? 'snip in progress…' : 'a small snip of happiness'}</span>
                 </div>
                 <div className="form-actions">
-                  <button className="primary-button" type="submit" disabled={pending}>
+                  <button className="primary-button" type="submit" disabled={pending || account.status === 'loading'}>
                     <Icon name="scissors" />
                     {pending ? 'Snipping…' : 'Snip my link'}
                     <Icon name="sparkles" />
@@ -163,10 +189,12 @@ export default function App() {
                 </section>
               )}
 
-              <div className="studio-note"><Icon name="smile" /><span>No account. Just a little snip.</span><Icon name="heart" /></div>
+              <div className="studio-note"><Icon name="smile" /><span>{account.user ? 'Your snips are saved to your account.' : 'No account needed. Just a little snip.'}</span><Icon name="heart" /></div>
             </div>
           </section>
-          <RecentSnips items={history.items} issue={history.issue} onRemove={history.remove} onClear={history.clear} />
+          {account.user
+            ? <AccountLinks key={account.user.id} refreshKey={accountVersion} onSessionExpired={account.refresh} />
+            : <RecentSnips items={history.items} issue={history.issue} onRemove={history.remove} onClear={history.clear} />}
         </div>
         <p className="below-window"><Icon name="paper-plane" /> A little link, ready for its next adventure.</p>
       </main>

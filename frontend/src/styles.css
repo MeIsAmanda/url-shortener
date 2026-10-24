@@ -36,6 +36,31 @@ svg { width: 22px; height: 22px; flex-shrink: 0; }
 .brand-mark svg { width: 25px; height: 25px; }
 .header-note { display: flex; align-items: center; gap: 8px; font-size: 12px; color: #667184; transform: rotate(2deg); }
 .header-note svg { color: #ab7339; width: 19px; height: 19px; }
+.header-actions, .account-menu { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.google-sign-in, .account-button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; padding: 8px 12px; border: 1px solid #b2bdc9; border-radius: 10px; background: #fffefb; color: var(--ink); font-size: 12px; font-weight: 600; text-decoration: none; white-space: nowrap; }
+.google-sign-in svg { width: 18px; height: 18px; }
+.google-sign-in:disabled { opacity: .6; cursor: default; }
+.account-name { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
+.account-retry { display: grid; place-items: center; width: 36px; height: 40px; padding: 0; border: 0; background: transparent; color: #527da2; }
+.account-retry svg { width: 18px; height: 18px; }
+.account-notice { flex-shrink: 0; padding: 8px 12px; margin: 0 0 10px; border-radius: 9px; background: #fff0f1; color: #873b4d; font-size: 12px; }
+.account-created { min-height: 38px; }
+.account-link-actions { display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-top: 8px; }
+.click-total { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: #52735c; }
+.click-total svg { width: 16px; height: 16px; }
+.account-more { display: flex; align-items: center; justify-content: center; gap: 6px; flex-shrink: 0; min-height: 44px; margin-top: 12px; border: 1px solid #d2c6aa; border-radius: 9px; background: #fffefa; color: #526b84; font-size: 12px; }
+.account-more svg { width: 14px; height: 14px; }
+@media (max-width: 1050px) { .header-actions .header-note { display: none; } }
+@media (max-width: 740px) {
+  .header-actions, .account-menu { gap: 6px; }
+  .google-sign-in, .account-button { font-size: 11px; padding: 7px 8px; gap: 6px; }
+  .account-name { max-width: 64px; font-size: 11px; }
+}
+@media (max-width: 360px) {
+  .google-sign-in, .account-button { font-size: 10px; padding-inline: 6px; }
+  .site-header { gap: 8px; }
+  .header-actions .account-name { max-width: 50px; }
+}
 .studio { position: relative; width: min(880px, calc(100% - 56px)); margin: 12px auto 30px; flex: 1; }
 .hero-heading { position: relative; width: fit-content; max-width: 100%; margin: 17px auto 39px; text-align: center; }
 h1 { font-family: 'Fredoka', 'Trebuchet MS', sans-serif; font-size: clamp(42px, 5.2vw, 62px); font-weight: 500; line-height: 1.18; letter-spacing: -1.6px; margin: 0; }

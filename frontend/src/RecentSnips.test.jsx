@@ -3,6 +3,9 @@ import { act, render, screen, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App.jsx';
 import { HISTORY_KEY } from './snipHistory.js';
+vi.mock('./accountApi.js', () => ({
+  fetchSession: async () => ({ user: null, googleSignInEnabled: false, csrfToken: 'guest-token' }),
+}));
 
 const originalUrl = 'https://example.com/our-link?x=%2F#Section';
 const shortUrl = 'http://localhost:8080/s/new';

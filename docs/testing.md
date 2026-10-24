@@ -11,6 +11,7 @@ These tests were written and executed by the assistant. Completion of Amanda's t
    For browser history, also read `snipHistory.js`, `useSnipHistory.js`, and `RecentSnips.jsx` alongside their data/UI tests and `browser/history.spec.js`. See [recent-snips.md](recent-snips.md).
 5. Read `frontend/src/urlValidation.js` with `urlValidation.test.js`, then backend `UrlValidator` and `UrlValidatorTest`. Both suites consume `backend/src/test/resources/validation/url-cases.tsv`; the frontend also verifies both bundled IANA lists match. See [url-validation.md](url-validation.md).
 6. Review the other backend tests under `backend/src/test/java/com/amanda/urlshortener/link/`: start with `Base62EncoderTest`, then `ShortLinkServiceTest`, `ShortLinkApiTest`, `SequenceMigrationTest`, then `ShortLinkRestartIT`.
+7. Read `account/AccountApiTest.java` with the account/security controllers/configuration, then frontend `Account.test.jsx`, `accountApi.test.js`, and `browser/accounts.spec.js`. These use test OIDC principals/stubbed account responses; a real Google sign-in remains manual after [setup](accounts.md).
 
 ## Backend sequence-ID checks
 
@@ -19,11 +20,13 @@ These tests were written and executed by the assistant. Completion of Amanda's t
 - `ShortLinkServiceTest`: validation before allocation/storage, exact ID/code and accepted-URL persistence, no output-length rejection, distinct allocations for repeated destinations, failure propagation without retries, variable-length/legacy lookup, and trusted public-origin configuration.
 - `ShortLinkApiTest`: HTTP create/redirect/error behavior, code uniqueness, duplicate assigned-ID rejection without overwrites, legacy aliases, and 48 creations across six worker threads. This is a concurrency correctness check, not a performance measurement.
 - `SequenceMigrationTest`: fresh startup at 1, file-backed legacy preservation, reservation of both old row IDs and decoded code values, sequence persistence after database reopen, non-reuse after rollback, and safe failure on exhaustion.
+- `AccountApiTest`: first-login identity reuse, owner isolation, CSRF including the actual session token, logout, expired-session creation rejection, cursor pagination, Google authorization state/nonce routing, HEAD handling, and 48 concurrent redirect increments.
+- The V4 migration/reopen case also verifies preservation of legacy unowned links, zero initial counts, durable accounts/ownership/counters, and the owner foreign key.
 - `ShortLinkRestartIT`: runs after packaging via Maven Failsafe. Starts the JAR with a temporary file database, forces an immediate process stop after a successful creation response, restarts it, verifies the exact redirect, and checks that the next ID advances. Redirect following is disabled. This guards against the delayed-write persistence issue found during manual verification.
 
 Migration tests use temporary file-backed H2 databases. API tests use a separate in-memory database. The packaged restart test uses its own temporary file database and an available local port. None opens or migrates `backend/data/shortener.mv.db`.
 
-From `backend/`, run `.\mvnw.cmd test` for the 122 validator/unit/API/migration cases, or `.\mvnw.cmd verify` for those cases plus packaging and the process-restart integration test (123 backend checks total). On macOS/Linux, use `./mvnw` instead. The packaged test uses the same JDK as Maven, starts two backend processes sequentially, and cleans them up; it does not require a manually running backend.
+From `backend/`, run `.\mvnw.cmd test` for the 135 account/security/validator/unit/API/migration cases, or `.\mvnw.cmd verify` for those cases plus packaging and the process-restart integration test (136 backend checks total). On macOS/Linux, use `./mvnw` instead. The packaged test uses the same JDK as Maven, starts two backend processes sequentially, and cleans them up; it does not require a manually running backend or Google credentials.
 
 In Vitest tests, `expect` checks an outcome, `vi.fn()` creates a controllable substitute, and `mockResolvedValue` supplies a fake asynchronous response. React Testing Library queries elements by their accessible role and name; `userEvent` simulates interactions. In Playwright, `page.route` replaces the API only in the isolated browser suite. The live suite has no API interception.
 
@@ -36,9 +39,12 @@ In Vitest tests, `expect` checks an outcome, `vi.fn()` creates a controllable su
 | `src/urlValidation.test.js` | 76 | Shared format/TLD fixtures, missing input, controls, exact length boundary, protocol completion/preservation, and identical backend/frontend TLD snapshots |
 | `src/snipHistory.test.js` | 9 | Malformed/untrusted saved data, permitted link schemes, deduplication, newest-first insertion, eviction, and separate short codes for the same destination |
 | `src/RecentSnips.test.jsx` | 8 | Restore on remount, success-only history, removal/clear, clear during a pending creation, unavailable storage, failed clear/retry, clipboard feedback, and simulated cross-tab storage updates |
+| `src/accountApi.test.js` | 11 | Session shape, same-origin/no-store requests, CSRF logout, string cursors, expired/changed sessions, and malformed private-history responses |
+| `src/Account.test.jsx` | 8 | Sign-in UI, dates/click refresh/pagination, owned creation headers, guest/account history separation, logout, late responses, session expiry, and account changes on focus |
 | `browser/shortening.spec.js` | 22 | Live-field interaction across six viewport sizes, real keyboard completion/caret/middle-edit/deletion checks and button/Enter submission, validation errors without requests at 320px, keyboard correction, clipboard denial, animation replay, reduced motion, and restoration when editing during the cut |
 | `browser/history.spec.js` | 11 | Persistence, ordering, side/bottom geometry, clipboard/removal/clear, quota failure, and full-collection checks at five desktop viewport sizes proving only the history list scrolls before/after creation |
-| `integration/live-api.spec.js` | 3 | Real creation/clipboard/302 Location, persisted history after reload, clearing history while the redirect still works, a short destination with longer output, validation correction, and direct backend validation |
+| `browser/accounts.spec.js` | 3 | Mocked signed-in My links at 320/1280px, dates/counts/refresh, owned headers, logout, and unavailable sign-in without Google configuration |
+| `integration/live-api.spec.js` | 4 | Real guest creation/clipboard/redirect/history/validation plus session metadata, private API rejection, expired-account creation protection, and CSRF logout enforcement |
 
 The frontend visibly adds https:// during bare-hostname keyboard entry/paste, with blur/submit as a fallback, validates the completed value, and submits that accepted value unchanged. Completion tests include bare hosts with ports, protocol-relative addresses, explicit schemes, and the length limit after prefix insertion. The API client and backend still require complete URLs; neither guesses a protocol. Backend API tests verify 400 validation responses, acceptance at 2,048 and rejection at 2,049 characters, and redirects for previously saved values above the new limit.
 
@@ -112,6 +118,7 @@ The test requests the short-code route through the local proxy with `maxRedirect
 - [ ] Check the scissors cursor, transparent handle centers, text/wait cursors, and touch-only fallback.
 - [ ] Create several snips, reload, and check newest-first history on desktop/mobile. Copy/remove entries and clear the list; saved backend links should still redirect. Try another tab and check the shared collection on the same frontend origin.
 - [ ] Run the prepared GitHub checks after pushing and inspect their logs.
+- [ ] Configure a real Google OAuth client, sign in with two test accounts, check owner isolation and exact redirects/count updates, then sign out/restart/sign back in. This has not been automated against Google.
 
 ## Workflow references
 

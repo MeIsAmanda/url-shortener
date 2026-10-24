@@ -3,10 +3,11 @@ import { validateDestination } from './urlValidation.js';
 const NETWORK_ERROR = 'We couldn’t connect. Check your connection and try again.';
 
 export class LinkRequestError extends Error {
-  constructor(message, fieldError = false) {
+  constructor(message, fieldError = false, sessionExpired = false) {
     super(message);
     this.name = 'LinkRequestError';
     this.fieldError = fieldError;
+    this.sessionExpired = sessionExpired;
   }
 }
 
@@ -20,14 +21,17 @@ function isHttpUrl(value) {
   }
 }
 
-export async function createLink(originalUrl) {
+export async function createLink(originalUrl, { csrfToken, accountRequired = false } = {}) {
   const validationError = validateDestination(originalUrl);
   if (validationError) throw new LinkRequestError(validationError, true);
   let response;
   try {
     response = await fetch('/api/urls', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: { 'Content-Type': 'application/json',
+        ...(csrfToken ? { 'X-CSRF-TOKEN': csrfToken } : {}),
+        ...(accountRequired ? { 'X-Sniply-Account': 'true' } : {}),
+      },
       // Validate without rewriting the submitted URL.
       body: JSON.stringify({ originalUrl }),
       signal: AbortSignal.timeout(15000),
@@ -39,6 +43,9 @@ export async function createLink(originalUrl) {
   const data = await response.json().catch(() => null);
 
   if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      throw new LinkRequestError('Your session changed. Please sign in again or refresh the page.', false, true);
+    }
     if (response.status === 400) {
       throw new LinkRequestError(
         typeof data?.message === 'string' ? data.message : 'We couldn’t process the request. Please try again.',

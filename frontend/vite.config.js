@@ -12,6 +12,8 @@ export default defineConfig({
     proxy: {
       '/api': backend,
       '/s/': backend,
+      '/oauth2': backend,
+      '/login/oauth2': backend,
     },
   },
   preview: { host: '0.0.0.0', port: 4173, strictPort: true },

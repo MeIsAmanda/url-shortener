@@ -13,7 +13,7 @@ Complete the required features first. Introduce basic security and a lightweight
 
 ### Current implementation and remaining work
 
-The sequence/Base62 backend, Flyway V1–V3 migrations, file-based H2 persistence, Sniply frontend, scissors interaction, frontend/backend tests, and GitHub Actions workflow are implemented. Recorded local results are in [verification.md](verification.md); those results do not establish that user review or hosted CI has completed.
+The sequence/Base62 backend, Flyway V1–V4 migrations, H2 persistence, Sniply frontend, scissors interaction, optional Google accounts, account link history/creation dates/redirect counts, tests, and GitHub Actions workflow are implemented. Google sign-in requires the user's OAuth client configuration and a real-provider manual check. Recorded local results are in [verification.md](verification.md); they do not establish user review or hosted CI completion.
 
 Next: review the code and test assertions, check the UI on an actual phone, and confirm the latest GitHub checks. Security scanning/hardening and performance measurements remain deferred to their own milestones. Finish with a clean-checkout check and submission review. Keep the final checklist unchecked until its complete requirement has been confirmed.
 
@@ -108,7 +108,7 @@ Flyway now owns versioned H2 schema changes; Hibernate validates the schema inst
 
 This is a database-coordinated design, not a claim that the application reproduces Bitly's internal implementation or is already distributed. The existing backend already had a service boundary and database-enforced uniqueness. Random generation with a unique constraint can also scale. Base62 supplies compact representation; the sequence supplies unique numbers. Increasing allocated IDs need not produce completion-ordered responses. Invalid destinations are rejected before allocation; failed inserts or rollbacks after allocation can leave gaps.
 
-Sequential public codes are enumerable. They are not credentials or authorization. The current embedded H2 file is still a single-instance assessment choice. A later deployment with multiple application instances would need a shared database and suitable allocator implementation; Redis, Snowflake, coordination services, click analytics, expiry, and status management remain outside this change. No performance improvement is claimed until measured. See [backend design](backend-design.md) for examples and migration details.
+Sequential public codes are enumerable. They are not credentials or authorization. Private account history has separate authentication, while redirects remain public. Embedded H2 is still a single-instance assessment choice; multiple backend instances would need tested shared database/session infrastructure. Basic redirect counts are implemented; Redis, Snowflake, coordination services, detailed visitor analytics, expiry, and status management remain outside this change. No performance improvement is claimed until measured. See [backend design](backend-design.md).
 
 Configure H2 connections with `SET WRITE_DELAY 0` so committed writes do not retain the default 500 ms flush delay. Include an immediate-stop/restart smoke check with an isolated file database. This is a persistence correctness check, not a performance test or a power-loss durability guarantee.
 
@@ -147,6 +147,10 @@ Place the real editable URL field at the scissors' cutting point instead of a si
 - Test approximate widths of 320, 360, 390, 768, and 1280 pixels, plus a landscape viewport and an actual phone if available.
 - Check portrait and landscape, browser zoom, and the on-screen keyboard.
 
+### Added account milestone — 25 October 2026
+
+At Amanda's request, add optional Google OAuth2/OpenID Connect login with automatic account creation by verified Google subject. Preserve anonymous shortening and its separate local browser collection. Signed-in creations belong to the backend-authenticated owner and appear in a private, paginated My links view with server creation dates and atomic GET redirect counts. Do not auto-claim public/anonymous links. Include session/CSRF protections, logout, expired-session handling, migration/restart compatibility, and tests for owner isolation. Google Cloud client registration and real-provider testing are manual setup steps; see [accounts.md](accounts.md).
+
 ## 6 Lightweight prompt engineering workflow
 
 Start this before coding. Treat it as a repeatable way to use an AI assistant during development, not an AI feature inside the URL shortener. No LLM API, agent framework, or chatbot is needed. Check any assessment rules about AI assistance and describe your use honestly.
@@ -166,7 +170,7 @@ Use this simple prompt structure:
 >
 > Task: Review mapping creation and exact input preservation. Do not change unrelated files.
 >
-> Constraints: Do not fetch destination URLs, add dependencies, introduce authentication, or change destination query parameters. Explain any uncertainty.
+> Constraints: Do not fetch destination URLs, add unrelated dependencies, change existing Google-account ownership/session rules, or change destination query parameters. Explain any uncertainty.
 >
 > Acceptance criteria: Enforce the documented HTTP(S), domain/TLD, encoding, and 2,048-character policy before allocation. Reject whitespace and malformed input. Preserve accepted query strings and fragments exactly, and keep generated codes unique.
 >
@@ -191,7 +195,7 @@ Keep a concise docs/ai-usage.md with a few useful prompts, what you accepted or 
 - Disable the H2 console outside an explicit local development profile. Do not expose database or sensitive management endpoints publicly.
 - If deployed, use HTTPS and verify suitable response headers. Apply HSTS only in an HTTPS deployment.
 
-Optional after the core works: add a simple limit to URL creation requests, return 429 with clear feedback, and test it. An in-memory limiter has single-instance and restart limitations; document those. Authentication is outside the brief.
+Optional after the core works: add a simple limit to URL creation requests, return 429 with clear feedback, and test it. An in-memory limiter has single-instance and restart limitations; document those. Google authentication/account history and basic redirect counters were added to scope at Amanda's request; broader security scans/hardening remain deferred.
 
 ### Scan after the first working version
 

@@ -29,18 +29,31 @@ public class ShortLinkService {
     }
 
     public CreateLinkResponse create(String input) {
+        return create(input, null);
+    }
+
+    public CreateLinkResponse create(String input, Long ownerId) {
         UrlValidator.validate(input);
         long id = idAllocator.nextId();
         String code = encoder.encode(id);
         String shortened = publicBaseUrl + "/s/" + code;
-        repository.saveAndFlush(new ShortLink(id, code, input));
+        repository.saveAndFlush(new ShortLink(id, code, input, ownerId));
         return new CreateLinkResponse(input, shortened);
     }
 
     public String resolve(String code) {
+        return resolve(code, true);
+    }
+
+    public String resolve(String code, boolean countClick) {
         if (code == null || !code.matches("[A-Za-z0-9]{1," + Base62Encoder.MAX_CODE_LENGTH + "}")) {
             throw new LinkNotFoundException();
         }
-        return repository.findByCode(code).orElseThrow(LinkNotFoundException::new).getOriginalUrl();
+        String original = repository.findByCode(code).orElseThrow(LinkNotFoundException::new).getOriginalUrl();
+        URI.create(original);
+        if (countClick) repository.incrementClicks(code);
+        return original;
     }
+
+    public String shortUrl(String code) { return publicBaseUrl + "/s/" + code; }
 }

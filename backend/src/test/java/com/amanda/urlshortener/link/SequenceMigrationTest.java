@@ -43,6 +43,35 @@ class SequenceMigrationTest {
     }
 
     @Test
+    void accountUpgradePreservesLegacyAliasesAndPersistsOwnersAndCounters() {
+        var source = dataSource("account-upgrade");
+        Flyway.configure().dataSource(source).locations("classpath:db/migration").target("3").load().migrate();
+        var jdbc = new JdbcTemplate(source);
+        long oldId = new DatabaseLinkIdAllocator(jdbc).nextId();
+        String oldDestination = "https://example.com/" + "a".repeat(5000);
+        jdbc.update("INSERT INTO short_links(id, code, original_url, created_at) VALUES (?, ?, ?, CURRENT_TIMESTAMP)",
+                oldId, "legacy1", oldDestination);
+        migrate(source);
+        assertEquals(oldDestination, jdbc.queryForObject("SELECT original_url FROM short_links WHERE code='legacy1'", String.class));
+        assertNull(jdbc.queryForObject("SELECT owner_id FROM short_links WHERE code='legacy1'", Long.class));
+        assertEquals(0L, jdbc.queryForObject("SELECT click_count FROM short_links WHERE code='legacy1'", Long.class));
+        jdbc.update("INSERT INTO user_accounts(google_subject, display_name, email, created_at) VALUES ('google-owner', 'Amanda', 'amanda@example.com', CURRENT_TIMESTAMP)");
+        Long owner = jdbc.queryForObject("SELECT id FROM user_accounts WHERE google_subject='google-owner'", Long.class);
+        long newId = new DatabaseLinkIdAllocator(jdbc).nextId();
+        jdbc.update("INSERT INTO short_links(id, code, original_url, created_at, owner_id) VALUES (?, ?, ?, CURRENT_TIMESTAMP, ?)",
+                newId, "owned1", "https://example.com/new", owner);
+        jdbc.update("UPDATE short_links SET click_count=click_count+3 WHERE code='owned1'");
+        var reopened = dataSource("account-upgrade");
+        migrate(reopened);
+        var restored = new JdbcTemplate(reopened);
+        assertEquals(owner, restored.queryForObject("SELECT owner_id FROM short_links WHERE code='owned1'", Long.class));
+        assertEquals(3L, restored.queryForObject("SELECT click_count FROM short_links WHERE code='owned1'", Long.class));
+        assertEquals(1L, restored.queryForObject("SELECT COUNT(*) FROM user_accounts", Long.class));
+        assertTrue(new DatabaseLinkIdAllocator(restored).nextId() > newId);
+        assertThrows(DataAccessException.class, () -> restored.update("UPDATE short_links SET owner_id=-1 WHERE code='owned1'"));
+    }
+
+    @Test
     void preservesLegacyDataAndReservesItsCodeSpaceAcrossRestarts() {
         var source = dataSource("legacy");
         var jdbc = new JdbcTemplate(source);

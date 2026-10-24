@@ -2,6 +2,8 @@
 
 Sniply keeps the **latest 20 successful creations**, newest first. The collection sits beside the tool at viewport widths of 1,000px and above, and below it at smaller widths. Each entry offers its short link, original destination preview, saved date, Copy, and Remove. Clear history removes the collection from this browser.
 
+This collection is for guest shortening. Signed-in users see the separate server-backed **My links** view with creation dates and click counts. Guest entries are not automatically claimed when signing in; account creations are not written to guest localStorage. Signing out restores the browser's guest collection. See [accounts.md](accounts.md).
+
 The desktop history column is 340px wide to fit typical short links on one line, including localhost links with longer codes. Narrow screens and unusually long custom hostnames can still wrap links to prevent horizontal overflow.
 
 At desktop sizes of at least 1,000×700px, the normal tool/result view fits the viewport and the history list owns the scrolling. The illustration scales to the available height while the editable field stays readable and aligned with the scissors. Smaller or zoomed windows use normal page scrolling with no nested history scrollbar, so content remains reachable.

@@ -1,4 +1,9 @@
 import { expect, test } from '@playwright/test';
+test.beforeEach(async ({ page }) => {
+  await page.route('**/api/auth/session', route => route.fulfill({
+    status: 200, json: { user: null, googleSignInEnabled: false, csrfToken: 'guest-token' },
+  }));
+});
 
 for (const width of [320, 390, 768, 1024, 1280]) {
   test('keeps recent snips across reloads and places them responsively at ' + width, async ({ page, context }) => {

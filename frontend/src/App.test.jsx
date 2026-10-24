@@ -2,6 +2,9 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App.jsx';
+vi.mock('./accountApi.js', () => ({
+  fetchSession: async () => ({ user: null, googleSignInEnabled: false, csrfToken: 'guest-token' }),
+}));
 
 const originalUrl = 'https://example.com/a-long-path?campaign=demo#section';
 const shortUrl = 'http://localhost:8080/s/Abc1234';

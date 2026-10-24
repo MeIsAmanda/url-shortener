@@ -1,16 +1,24 @@
 # Project verification
 
-The recent-snips frontend and live checks were run on 25 October 2026 with Node 20.19.5, installed headless Chrome, and the previously built Java 25/Spring Boot 4.1.2 backend. Earlier milestones retain their original results and policies. No hosted GitHub CI result is claimed.
+The Google-account/redirect-count checks were run on 25 October 2026 with Java 25/Spring Boot 4.1.2, Node 20.19.5, and installed headless Chrome. Earlier milestones retain their original results and policies. No hosted GitHub CI result or real Google-provider login is claimed.
 
 ## Latest recorded results
 
 | Check | Result | Boundary |
 | --- | --- | --- |
-| Backend Maven verify | 123 passed: 122 validator/unit/API/migration cases plus 1 packaged restart check | Isolated databases; executable JAR built |
-| Frontend tests | 129 passed: 15 form, 21 client, 76 URL-policy, 9 history-data, and 8 history-UI cases | Includes protocol completion, shared Java/JS fixtures, storage failure handling, and persistent recent snips |
-| Frontend production build | Passed | Includes offline IANA snapshot and recent-snips UI |
-| Isolated Chrome browser suite | 33 current cases passed across the existing 28-case run and targeted history follow-up | Includes full-history scroll containment at five desktop sizes, reload, responsive layout, clipboard, and previous form/animation checks |
-| Live Chrome browser suite | 3 passed | Real API/clipboard/redirect, validation, persisted history after reload, and clearing history without deleting backend mappings |
+| Backend Maven verify | 136 passed: 135 account/security/validator/unit/API/migration cases plus 1 packaged restart check | Isolated databases; executable JAR built; account tests use OIDC test principals |
+| Frontend tests | 148 passed across 7 files | Includes account UI/API, logout/session expiry/late response cleanup, and the existing suites |
+| Frontend production build | Passed | Includes account UI, offline IANA snapshot, and guest history |
+| Isolated Chrome browser suite | 36 passed | Account UI uses stubbed sessions/history; responsive guest behavior, scroll containment, clipboard, and animation checks remain covered |
+| Live Chrome browser suite | 4 passed | Real guest API/clipboard/redirect, history/validation, session metadata, private-history rejection, expired-account creation protection, and CSRF logout enforcement |
+
+## Google accounts and click counts — 25 October 2026
+
+Added optional Google OIDC authorization-code login with automatic local account creation, owner-scoped cursor history, server creation dates, atomic GET redirect counters, and CSRF-protected account creation/logout. V4 preserves legacy mappings as unowned with zero counts; a file-backed upgrade/reopen test verifies durable accounts, ownership, counts, and sequence state. HEAD/unknown-code requests do not increment counts; concurrent increments were checked. Direct API clients cannot choose an owner, and stale signed-in UI cannot silently create an unowned mapping after session expiry.
+
+All backend checks and builds passed. Frontend tests verify separate guest/account histories, count refresh and pagination, logout/session changes, and ignoring late private responses. Isolated browser cases use mocked account state; the live packaged backend uses an isolated in-memory database with Google login disabled. Four live cases passed without following destination redirects externally. The session CSRF token was also tested with the actual security filter chain in MockMvc.
+
+Guest desktop/mobile screenshots were refreshed against the real local backend. Account desktop/mobile previews were captured and visually inspected with explicitly mocked identities and counts; they do not demonstrate a Google login. Google Cloud OAuth credentials are not configured, so real consent, token exchange/validation with Google, and signed-in session/logout behavior remain manual checks. Setup and the exact callback URL are in [accounts.md](accounts.md). Sign-in stays unavailable until configured; guest shortening remains functional. This is functional verification, not a completed security scan or performance benchmark.
 
 ## Recent snips — 25 October 2026
 
