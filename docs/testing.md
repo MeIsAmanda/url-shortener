@@ -8,6 +8,7 @@ These tests were written and executed by the assistant. Completion of Amanda's t
 2. Read `frontend/src/api.js` alongside `frontend/src/api.test.js`: these cover the HTTP boundary and failure messages.
 3. Read `frontend/browser/shortening.spec.js`: these run in a real browser but deliberately stub the API.
 4. Read `frontend/integration/live-api.spec.js`: these use a running real backend and check an actual saved mapping.
+   For browser history, also read `snipHistory.js`, `useSnipHistory.js`, and `RecentSnips.jsx` alongside their data/UI tests and `browser/history.spec.js`. See [recent-snips.md](recent-snips.md).
 5. Read `frontend/src/urlValidation.js` with `urlValidation.test.js`, then backend `UrlValidator` and `UrlValidatorTest`. Both suites consume `backend/src/test/resources/validation/url-cases.tsv`; the frontend also verifies both bundled IANA lists match. See [url-validation.md](url-validation.md).
 6. Review the other backend tests under `backend/src/test/java/com/amanda/urlshortener/link/`: start with `Base62EncoderTest`, then `ShortLinkServiceTest`, `ShortLinkApiTest`, `SequenceMigrationTest`, then `ShortLinkRestartIT`.
 
@@ -33,8 +34,11 @@ In Vitest tests, `expect` checks an outcome, `vi.fn()` creates a controllable su
 | `src/App.test.jsx` | 15 | Compact labelled tool, clear/reset, input identity/value/focus, keyboard/paste protocol completion, prefix editing, composition, and Enter, validation and correction, pending handling, network retry, stale-result removal, and clipboard feedback |
 | `src/api.test.js` | 21 | Exact accepted request/response preservation, invalid input rejected before fetch, backend field errors, server/network failures, and malformed generated-link responses |
 | `src/urlValidation.test.js` | 76 | Shared format/TLD fixtures, missing input, controls, exact length boundary, protocol completion/preservation, and identical backend/frontend TLD snapshots |
+| `src/snipHistory.test.js` | 9 | Malformed/untrusted saved data, permitted link schemes, deduplication, newest-first insertion, eviction, and separate short codes for the same destination |
+| `src/RecentSnips.test.jsx` | 8 | Restore on remount, success-only history, removal/clear, clear during a pending creation, unavailable storage, failed clear/retry, clipboard feedback, and simulated cross-tab storage updates |
 | `browser/shortening.spec.js` | 22 | Live-field interaction across six viewport sizes, real keyboard completion/caret/middle-edit/deletion checks and button/Enter submission, validation errors without requests at 320px, keyboard correction, clipboard denial, animation replay, reduced motion, and restoration when editing during the cut |
-| `integration/live-api.spec.js` | 3 | Real creation/clipboard/302 Location, a short destination with longer output, validation correction with exact encoded redirect, and direct backend validation |
+| `browser/history.spec.js` | 11 | Persistence, ordering, side/bottom geometry, clipboard/removal/clear, quota failure, and full-collection checks at five desktop viewport sizes proving only the history list scrolls before/after creation |
+| `integration/live-api.spec.js` | 3 | Real creation/clipboard/302 Location, persisted history after reload, clearing history while the redirect still works, a short destination with longer output, validation correction, and direct backend validation |
 
 The frontend visibly adds https:// during bare-hostname keyboard entry/paste, with blur/submit as a fallback, validates the completed value, and submits that accepted value unchanged. Completion tests include bare hosts with ports, protocol-relative addresses, explicit schemes, and the length limit after prefix insertion. The API client and backend still require complete URLs; neither guesses a protocol. Backend API tests verify 400 validation responses, acceptance at 2,048 and rejection at 2,049 characters, and redirects for previously saved values above the new limit.
 
@@ -45,6 +49,8 @@ The illustration is in `frontend/src/CuttingScene.jsx`; submission-driven transf
 The input's accessible label is **Put your long URL here!**; the curly arrow is decorative and hidden from screen readers. Responsive browser checks also verify the Sniply page title and that the confetti stays below the input.
 
 The native pixel-art cursor is in `frontend/public/scissors-cursor.svg`, with hover/fine-pointer CSS rules in `src/styles.css`. The cursor's handle centers are transparent. Check it manually over the page, links, buttons, and the editable input; the input should retain its text cursor and a pending submit should retain its wait cursor. Touch-only devices should not get a custom cursor. Existing automated suites do not specifically test this asset; the earlier Chrome spot check is recorded separately from suite results.
+
+The test setup clears localStorage before each Vitest case, and Playwright cases use separate browser contexts. History tests seed only their temporary test storage. Blocked/quota/clear failures are deliberately simulated; the browser suite does not use the person's normal browser profile or history. No new history API or database migration exists.
 
 ## Commands
 
@@ -83,7 +89,7 @@ npm run build
 npm run test:live
 ```
 
-To refresh the documentation screenshots during that check, also set `$env:CAPTURE_SCREENSHOTS = '1'`. This writes `docs/screenshots/landing-desktop.png`, `docs/screenshots/input-cutting-desktop.png`, `docs/screenshots/result-mobile.png`, and `docs/screenshots/validation-mobile.png`. The mid-cut image pauses animations at a controlled frame only for screenshot capture. The screenshots show a real locally generated link, not a deployed service, and do not capture the native cursor.
+To refresh the documentation screenshots during that check, also set `$env:CAPTURE_SCREENSHOTS = '1'`. This writes `docs/screenshots/landing-desktop.png`, `docs/screenshots/input-cutting-desktop.png`, `docs/screenshots/history-desktop.png`, `docs/screenshots/result-mobile.png`, and `docs/screenshots/validation-mobile.png`. The mid-cut image pauses animations at a controlled frame only for screenshot capture. The screenshots show a real locally generated link, not a deployed service, and do not capture the native cursor.
 
 The test requests the short-code route through the local proxy with `maxRedirects: 0`. It asserts the 302 response and original destination, including query and fragment, without visiting the external website. Stop the isolated backend with Ctrl+C when finished. Environment variables apply to the current shell; open fresh terminals for normal development or remove the test-specific overrides.
 
@@ -104,6 +110,7 @@ The test requests the short-code route through the local proxy with `maxRedirect
 - [ ] Try keyboard-only use and an actual phone in portrait and landscape.
 - [ ] Check browser zoom and long-URL wrapping.
 - [ ] Check the scissors cursor, transparent handle centers, text/wait cursors, and touch-only fallback.
+- [ ] Create several snips, reload, and check newest-first history on desktop/mobile. Copy/remove entries and clear the list; saved backend links should still redirect. Try another tab and check the shared collection on the same frontend origin.
 - [ ] Run the prepared GitHub checks after pushing and inspect their logs.
 
 ## Workflow references

@@ -4,6 +4,8 @@ import { completeProtocol, validateDestination } from './urlValidation.js';
 import CuttingScene from './CuttingScene.jsx';
 import SnipInput from './SnipInput.jsx';
 import Icon from './Icons.jsx';
+import RecentSnips from './RecentSnips.jsx';
+import useSnipHistory from './useSnipHistory.js';
 
 export default function App() {
   const [input, setInput] = useState('');
@@ -15,6 +17,7 @@ export default function App() {
   const inputRef = useRef(null);
   const submitting = useRef(false);
   const resultVersion = useRef(0);
+  const history = useSnipHistory();
 
   async function handleSubmit(event) {
     event.preventDefault();
@@ -36,7 +39,9 @@ export default function App() {
     submitting.current = true;
     // The illustration runs independently: never delay the API or its result.
     try {
-      setResult(await createLink(destination));
+      const created = await createLink(destination);
+      setResult(created);
+      history.remember(created);
     } catch (failure) {
       setError({ message: failure.message, field: failure.fieldError });
       inputRef.current.focus();
@@ -97,69 +102,72 @@ export default function App() {
         <div className="sticker sticker--link" aria-hidden="true"><Icon name="link" /></div>
         <div className="sticker sticker--heart" aria-hidden="true"><Icon name="heart" /><span>with love</span></div>
 
-        <section className="paper-window" aria-label="Link shortener">
-          <div className="window-bar">
-            <span className="window-dots" aria-hidden="true"><i /><i /><i /></span>
-            <span className="window-star" aria-hidden="true"><Icon name="sparkles" /></span>
-          </div>
+        <div className="snip-workspace">
+          <section className="paper-window" aria-label="Link shortener">
+            <div className="window-bar">
+              <span className="window-dots" aria-hidden="true"><i /><i /><i /></span>
+              <span className="window-star" aria-hidden="true"><Icon name="sparkles" /></span>
+            </div>
 
-          <div className="window-body">
-            <form onSubmit={handleSubmit} noValidate aria-busy={pending}>
-              <div className="scene-frame">
-                <CuttingScene key={snipCount} active={snipCount > 0} />
-                <SnipInput
-                  inputRef={inputRef}
-                  value={input}
-                  pending={pending}
-                  error={error}
-                  run={snipCount}
-                  onChange={updateInput}
-                  onBlur={completeInputProtocol}
-                  onClear={clearInput}
-                />
-                <span className="scene-caption" aria-hidden="true">{pending ? 'snip in progress…' : 'a small snip of happiness'}</span>
-              </div>
-              <div className="form-actions">
-                <button className="primary-button" type="submit" disabled={pending}>
-                  <Icon name="scissors" />
-                  {pending ? 'Snipping…' : 'Snip my link'}
-                  <Icon name="sparkles" />
-                </button>
-              </div>
-              <p id="url-hint" className="sr-only">HTTPS is added as you type or paste a bare domain, or when you leave the field or submit. Use a recognized domain. Maximum 2,048 characters including the protocol. Encode spaces and special characters.</p>
-              {error && <p id="form-error" className="form-error" role="alert"><Icon name="cloud" />{error.message}</p>}
-              <p className="sr-only" role="status">{pending ? 'Creating your short link.' : ''}</p>
-            </form>
-
-            {result && (
-              <section className="result-card" aria-labelledby="result-title">
-                <div className="result-heading">
-                  <p id="result-title" className="result-title" role="status"><span><Icon name="check" /></span>Freshly snipped!</p>
-                  <Icon name="sparkles" />
+            <div className="window-body">
+              <form onSubmit={handleSubmit} noValidate aria-busy={pending}>
+                <div className="scene-frame">
+                  <CuttingScene key={snipCount} active={snipCount > 0} />
+                  <SnipInput
+                    inputRef={inputRef}
+                    value={input}
+                    pending={pending}
+                    error={error}
+                    run={snipCount}
+                    onChange={updateInput}
+                    onBlur={completeInputProtocol}
+                    onClear={clearInput}
+                  />
+                  <span className="scene-caption" aria-hidden="true">{pending ? 'snip in progress…' : 'a small snip of happiness'}</span>
                 </div>
-                <div className="result-link-row">
-                  <a className="short-url" href={result.shortUrl} target="_blank" rel="noopener noreferrer">{result.shortUrl}</a>
-                  <button type="button" className="copy-button" onClick={handleCopy} disabled={copyState === 'copying'}>
-                    <Icon name={copyState === 'copied' ? 'check' : 'copy'} />
-                    {copyState === 'copied' ? 'Copied!' : copyState === 'copying' ? 'Copying…' : 'Copy link'}
+                <div className="form-actions">
+                  <button className="primary-button" type="submit" disabled={pending}>
+                    <Icon name="scissors" />
+                    {pending ? 'Snipping…' : 'Snip my link'}
+                    <Icon name="sparkles" />
                   </button>
                 </div>
-                <div className="result-bottom">
-                  <details className="destination-details">
-                    <summary>Original link <Icon name="chevron" /></summary>
-                    <p className="original-url">{result.originalUrl}</p>
-                  </details>
-                  <a className="open-link" href={result.shortUrl} target="_blank" rel="noopener noreferrer">Open link <Icon name="external" /></a>
-                </div>
-                <p className={copyState === 'failed' ? 'copy-message copy-error' : 'copy-message sr-only'} role="status">
-                  {copyState === 'failed' ? 'Couldn’t copy automatically. Select the short URL above and copy it manually.' : copyState === 'copied' ? 'Short link copied to clipboard.' : ''}
-                </p>
-              </section>
-            )}
+                <p id="url-hint" className="sr-only">HTTPS is added as you type or paste a bare domain, or when you leave the field or submit. Use a recognized domain. Maximum 2,048 characters including the protocol. Encode spaces and special characters.</p>
+                {error && <p id="form-error" className="form-error" role="alert"><Icon name="cloud" />{error.message}</p>}
+                <p className="sr-only" role="status">{pending ? 'Creating your short link.' : ''}</p>
+              </form>
 
-            <div className="studio-note"><Icon name="smile" /><span>No account. Just a little snip.</span><Icon name="heart" /></div>
-          </div>
-        </section>
+              {result && (
+                <section className="result-card" aria-labelledby="result-title">
+                  <div className="result-heading">
+                    <p id="result-title" className="result-title" role="status"><span><Icon name="check" /></span>Freshly snipped!</p>
+                    <Icon name="sparkles" />
+                  </div>
+                  <div className="result-link-row">
+                    <a className="short-url" href={result.shortUrl} target="_blank" rel="noopener noreferrer">{result.shortUrl}</a>
+                    <button type="button" className="copy-button" onClick={handleCopy} disabled={copyState === 'copying'}>
+                      <Icon name={copyState === 'copied' ? 'check' : 'copy'} />
+                      {copyState === 'copied' ? 'Copied!' : copyState === 'copying' ? 'Copying…' : 'Copy link'}
+                    </button>
+                  </div>
+                  <div className="result-bottom">
+                    <details className="destination-details">
+                      <summary>Original link <Icon name="chevron" /></summary>
+                      <p className="original-url">{result.originalUrl}</p>
+                    </details>
+                    <a className="open-link" href={result.shortUrl} target="_blank" rel="noopener noreferrer">Open link <Icon name="external" /></a>
+                  </div>
+                  <p className={copyState === 'failed' ? 'copy-message copy-error' : 'copy-message sr-only'} role="status">
+                    {copyState === 'failed' ? 'Couldn’t copy automatically. Select the short URL above and copy it manually.' : copyState === 'copied' ? 'Short link copied to clipboard.' : ''}
+                  </p>
+                </section>
+              )}
+
+              <div className="studio-note"><Icon name="smile" /><span>No account. Just a little snip.</span><Icon name="heart" /></div>
+            </div>
+          </section>
+          <RecentSnips items={history.items} issue={history.issue} onRemove={history.remove} onClear={history.clear} />
+        </div>
         <p className="below-window"><Icon name="paper-plane" /> A little link, ready for its next adventure.</p>
       </main>
 

@@ -50,6 +50,8 @@ The real editable URL field sits above the scissors. On submission, the characte
 
 The field is labelled **Put your long URL here!** with a curly arrow. Confetti sits below the field. Mouse users get a native pixel-art scissors cursor with transparent handle centers; the URL field retains its text cursor, and touch devices keep normal behavior.
 
+**Recent snips** keeps the latest 20 successful links in this browser: beside the tool on desktop (1,000px and wider), below it on smaller screens. Copy, remove, or clear entries; they survive normal reloads through localStorage. Clearing this list does not delete backend links. Different browsers/devices or frontend origins have separate histories. See [how recent snips work](docs/recent-snips.md).
+
 Vite forwards `/api` and `/s/` requests to `http://127.0.0.1:8080`, so local development needs no broad CORS configuration. If your backend uses another port, set `BACKEND_PROXY_TARGET` before starting Vite, for example `$env:BACKEND_PROXY_TARGET = 'http://127.0.0.1:8081'` in PowerShell.
 
 To inspect the frontend build locally:
@@ -130,7 +132,7 @@ The workflow is already defined in [.github/workflows/checks.yml](.github/workfl
 After the source is pushed, the workflow runs on pushes and pull requests, and supports a manual run from the Actions tab:
 
 - **Backend tests and build:** Java 25, Maven tests, packaging, and the packaged-application restart check (`verify`).
-- **Frontend tests and build:** Node 24, locked dependency installation, component/API-client/URL-policy tests, build, and twenty-two Chromium browser checks, including protocol completion, URL validation, live-field interaction, and animation/reduced-motion behavior.
+- **Frontend tests and build:** Node 24, locked dependency installation, component/API-client/URL-policy/history tests, build, and thirty-three Chromium browser checks, including recent-snips persistence/scroll containment, protocol completion, URL validation, and animation/reduced-motion behavior.
 
 You do not need to recreate the workflow through GitHub's website. If Actions is disabled by repository or organisation policy, enable or request access there. Requiring the two checks before merging is a separate branch-rules setting you can configure on GitHub after the checks have run. No secrets or deployment credentials are needed for this workflow.
 
@@ -200,7 +202,7 @@ Then read the five validator/unit/API/migration test classes and `ShortLinkResta
 4. Load testing with redirects disabled in the load client, plus response-time reporting.
 5. Clean-checkout review and final submission documentation.
 
-Local screenshots: [desktop landing page](docs/screenshots/landing-desktop.png), [input during the cut](docs/screenshots/input-cutting-desktop.png), [mobile result](docs/screenshots/result-mobile.png), and [mobile validation error](docs/screenshots/validation-mobile.png). Native cursors are not included in page screenshots.
+Local screenshots: [desktop landing page](docs/screenshots/landing-desktop.png), [desktop with recent snips](docs/screenshots/history-desktop.png), [input during the cut](docs/screenshots/input-cutting-desktop.png), [mobile result and history](docs/screenshots/result-mobile.png), and [mobile validation error](docs/screenshots/validation-mobile.png). Native cursors are not included in page screenshots.
 
 ## Documentation guide
 
@@ -209,6 +211,7 @@ Local screenshots: [desktop landing page](docs/screenshots/landing-desktop.png),
 | [Project plan](docs/project-plan.md) | Scope, current implementation, and remaining milestones |
 | [Backend design](docs/backend-design.md) | Sequence/Base62 flow, persistence, migrations, and design tradeoffs |
 | [URL validation](docs/url-validation.md) | Accepted formats, length limit, TLD snapshot, and availability policy |
+| [Recent snips](docs/recent-snips.md) | Browser history, localStorage, layout, clearing, and persistence limits |
 | [Testing guide](docs/testing.md) | Suite boundaries, commands, and manual review checklist |
 | [Verification record](docs/verification.md) | Previously observed results, historical milestones, and unverified work |
 | [Prompt template](docs/prompt-template.md) | Reusable context and constraints for new changes |

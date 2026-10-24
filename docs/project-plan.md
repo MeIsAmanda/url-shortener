@@ -130,6 +130,8 @@ Use **Sniply** branding. Label the input **Put your long URL here!** with a deco
 
 Complete an omitted protocol as https:// during bare-hostname keyboard entry/paste, with blur/submission as a fallback and display it in the textbox before validation/creation. Preserve explicit schemes and encoded path/query/fragment text. Handle bare hostnames with ports and protocol-relative addresses; leave blank input blank. Include the added prefix in the 2,048-character limit. Direct backend API requests still require an explicit HTTP(S) URL.
 
+Keep the latest 20 successful creations in localStorage, newest first, with a Recent snips collection beside the tool from 1,000px wide and below it on smaller screens. Provide Open, Copy, Remove, and Clear history. Storage failures must not block shortening; clearing browser history must not delete backend mappings. Restore only well-formed records and keep history work out of keystroke/animation updates. See [recent-snips.md](recent-snips.md) for behavior and limitations.
+
 Use a native 32×32 pixel-art scissors cursor for fine pointers with hover support. Keep its handle centers transparent, retain the text cursor in editable fields, preserve pending-state feedback, and leave touch-only behavior unchanged. Use CSS cursor fallbacks rather than JavaScript mouse tracking.
 
 On every submission, replay a finite SVG/CSS cutting animation independently of the network request. Use transforms and opacity for scene motion; never wait for the animation before sending the request or displaying its response. Do not loop the scene while idle. Respect reduced-motion preferences by disabling decorative animation. Keep artwork and controls responsive, with no animation-library dependency.

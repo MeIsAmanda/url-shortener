@@ -1,16 +1,32 @@
 # Project verification
 
-The latest URL-validation checks were run on 25 October 2026 with Java 25/Spring Boot 4.1.2, Node 20.19.5, and installed headless Chrome. Earlier milestones retain their original results and policies. No hosted GitHub CI result is claimed.
+The recent-snips frontend and live checks were run on 25 October 2026 with Node 20.19.5, installed headless Chrome, and the previously built Java 25/Spring Boot 4.1.2 backend. Earlier milestones retain their original results and policies. No hosted GitHub CI result is claimed.
 
 ## Latest recorded results
 
 | Check | Result | Boundary |
 | --- | --- | --- |
 | Backend Maven verify | 123 passed: 122 validator/unit/API/migration cases plus 1 packaged restart check | Isolated databases; executable JAR built |
-| Frontend tests | 112 passed: 15 component, 21 client, 76 URL-policy cases | Includes visible protocol completion, shared Java/JS fixtures, and identical TLD snapshot check |
-| Frontend production build | Passed | Includes offline IANA snapshot |
-| Isolated Chrome browser suite | 22 passed | Six viewport sizes, visible protocol completion, validation/correction without requests, interaction, clipboard, and reduced motion |
-| Live Chrome browser suite | 3 passed | Real API/clipboard/redirect, validation correction, exact accepted encoding, and direct invalid API request |
+| Frontend tests | 129 passed: 15 form, 21 client, 76 URL-policy, 9 history-data, and 8 history-UI cases | Includes protocol completion, shared Java/JS fixtures, storage failure handling, and persistent recent snips |
+| Frontend production build | Passed | Includes offline IANA snapshot and recent-snips UI |
+| Isolated Chrome browser suite | 33 current cases passed across the existing 28-case run and targeted history follow-up | Includes full-history scroll containment at five desktop sizes, reload, responsive layout, clipboard, and previous form/animation checks |
+| Live Chrome browser suite | 3 passed | Real API/clipboard/redirect, validation, persisted history after reload, and clearing history without deleting backend mappings |
+
+## Recent snips — 25 October 2026
+
+Added a browser-local collection of the latest 20 successful creations, displayed beside the tool from 1,000px wide and below it on smaller screens. Entries provide Open/Copy/Remove and Clear history. The list uses localStorage, remains available in memory if storage fails, and does not create an account-history endpoint. Saved data is checked before rendering; the collection is memoized and writes happen only on history changes.
+
+All 129 frontend tests, the build, 28 isolated browser cases, and three real-backend browser cases passed. The live check verified persistence on reload and an unchanged exact 302 redirect after clearing browser history. Desktop/mobile screenshots were refreshed and visually inspected, including `screenshots/history-desktop.png`. Tests covered blocked/quota/clear failures and a clear during an in-flight creation. Cross-tab notification was checked through a simulated storage event in a component test.
+
+The real backend ran on port 8081 with a temporary in-memory database and external redirect following disabled. Backend source/schema were unchanged, so the full backend suite was not rerun for recent snips; the 123 backend checks above remain the preceding validation revision's result. Actual-phone/IME review, security scans, and performance measurements remain unverified. See [recent-snips.md](recent-snips.md) for scope and browser-storage limits.
+
+Width follow-up: expanded the desktop history column from 280px to 340px. The production build and all 28 existing browser checks passed again. A separate Chrome spot check with 12 seeded entries verified that a localhost link with an 11-character code plus its external-link icon fits on one line at 1,000/1,024/1,280px viewport widths. Longer custom hosts and narrow screens retain wrapping. Backend/live checks were not rerun for this CSS change.
+
+Scroll-containment follow-up: hidden status messages in unpositioned history cards were escaping the list's scroll container and extending the document height. Cards now establish their own containing block. The desktop layout also fits the available viewport height; the illustration shrinks while preserving the input/cutting alignment, and the list uses the remaining height. Smaller/shorter windows retain normal page flow without a nested history scrollbar. No global body overflow lock was added.
+
+The build and existing 28 browser checks passed with this layout. Five new full-history regressions also passed (in an 11-case targeted history run), covering 1,000×700, 1,024×768, 1,280×720, 1,280×900, and 1,920×1,080 viewports. They seed 20 entries, verify the document fits both before and after creation, scroll the history, and check the outer page stays still. A separate 1,280×768 fixture preview was visually inspected. Earlier real-backend screenshots/live results remain from before this CSS follow-up; backend, unit, and live suites were not rerun.
+
+Spacing follow-up: the desktop form now distributes spare space evenly around the illustration and submit action, reducing the large unused area below the button on tall windows. The build and a complete 33-case browser run passed. A 1,280×1,080 preview was visually inspected; the page still fits the viewport. Mobile layout and backend behavior were unchanged.
 
 New creation validates HTTP(S), domain/TLD format, encoded characters, no raw whitespace, and at most 2,048 characters, before ID allocation. Invalid input returns 400 INVALID_URL; accepted URLs remain unchanged. The tests also verify missing/null input, control characters, malformed escapes, invalid Punycode, exact boundary behavior, and redirects for older over-limit mappings. The TLD snapshot is bundled; no DNS or destination HTTP request is made. See [url-validation.md](url-validation.md).
 

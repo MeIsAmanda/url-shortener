@@ -41,11 +41,23 @@ test('creates, copies, and resolves a real saved link', async ({ page, context }
   expect(redirect.status()).toBe(302);
   expect(redirect.headers().location).toBe(originalUrl);
 
+  const history = page.getByRole('complementary', { name: 'Recent snips' });
+  await expect(history.getByRole('link', { name: 'Open saved snip ' + shortUrl })).toBeVisible();
+  if (process.env.CAPTURE_SCREENSHOTS) {
+    await page.screenshot({ path: path.resolve('../docs/screenshots/history-desktop.png'), fullPage: true, animations: 'disabled' });
+  }
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   if (process.env.CAPTURE_SCREENSHOTS) {
     await page.screenshot({ path: path.resolve('../docs/screenshots/result-mobile.png'), fullPage: true, animations: 'disabled' });
   }
+  await page.reload();
+  await expect(history.getByRole('link', { name: 'Open saved snip ' + shortUrl })).toBeVisible();
+  await history.getByRole('button', { name: 'Clear history' }).click();
+  await expect(history.getByRole('listitem')).toHaveCount(0);
+  const afterClear = await page.request.get(new URL(shortUrl).pathname, { maxRedirects: 0 });
+  expect(afterClear.status()).toBe(302);
+  expect(afterClear.headers().location).toBe(originalUrl);
 });
 
 test('saves a short destination even when the generated link is longer', async ({ page }) => {
