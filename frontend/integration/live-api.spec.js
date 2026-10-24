@@ -16,7 +16,6 @@ test('creates, copies, and resolves a real saved link', async ({ page, context }
   const open = page.getByRole('link', { name: 'Open link' });
   await expect(open).toBeVisible();
   const shortUrl = await open.getAttribute('href');
-  expect(shortUrl.length).toBeLessThan(originalUrl.length);
 
   await page.getByRole('button', { name: 'Copy link' }).click();
   await expect(page.getByRole('button', { name: 'Copied!' })).toBeVisible();
@@ -34,11 +33,13 @@ test('creates, copies, and resolves a real saved link', async ({ page, context }
   }
 });
 
-test('shows a real backend validation error and preserves the input', async ({ page }) => {
+test('saves a short destination even when the generated link is longer', async ({ page }) => {
   await page.goto('/');
   const input = page.getByRole('textbox', { name: 'Your long URL' });
   await input.fill('https://x.co');
   await page.getByRole('button', { name: 'Shorten my link' }).click();
-  await expect(page.getByRole('alert')).toContainText('already too short');
+  const open = page.getByRole('link', { name: 'Open link' });
+  await expect(open).toBeVisible();
+  expect((await open.getAttribute('href')).length).toBeGreaterThan('https://x.co'.length);
   await expect(input).toHaveValue('https://x.co');
 });

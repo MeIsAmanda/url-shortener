@@ -8,7 +8,19 @@ These tests were written and executed by the assistant. Amanda's review is still
 2. Read `frontend/src/api.js` alongside `frontend/src/api.test.js`: these cover the HTTP boundary and failure messages.
 3. Read `frontend/browser/shortening.spec.js`: these run in a real browser but deliberately stub the API.
 4. Read `frontend/integration/live-api.spec.js`: these use a running real backend and check an actual saved mapping.
-5. Review the existing backend tests: `UrlValidatorTest`, `ShortLinkServiceTest`, and `ShortLinkApiTest` under `backend/src/test/java/com/amanda/urlshortener/link/`.
+5. Review the backend tests under `backend/src/test/java/com/amanda/urlshortener/link/`: start with `Base62EncoderTest`, then `ShortLinkServiceTest`, `ShortLinkApiTest`, `SequenceMigrationTest`, then `ShortLinkRestartIT`.
+
+## Backend sequence-ID checks
+
+- `Base62EncoderTest`: known alphabet values, digit-length transitions, rejection of negatives, and the full positive-long range without truncation.
+- `ShortLinkServiceTest`: exact ID/code and submitted-string persistence, no destination or output-length rejection, distinct allocations for repeated destinations, failure propagation without retries, variable-length/legacy lookup, and trusted public-origin configuration.
+- `ShortLinkApiTest`: HTTP create/redirect/error behavior, code uniqueness, duplicate assigned-ID rejection without overwrites, legacy aliases, and 48 creations across six worker threads. This is a concurrency correctness check, not a performance measurement.
+- `SequenceMigrationTest`: fresh startup at 1, file-backed legacy preservation, reservation of both old row IDs and decoded code values, sequence persistence after database reopen, non-reuse after rollback, and safe failure on exhaustion.
+- `ShortLinkRestartIT`: runs after packaging via Maven Failsafe. Starts the JAR with a temporary file database, forces an immediate process stop after a successful creation response, restarts it, verifies the exact redirect, and checks that the next ID advances. Redirect following is disabled. This guards against the delayed-write persistence issue found during manual verification.
+
+Migration tests use temporary file-backed H2 databases. API tests use a separate in-memory database. The packaged restart test uses its own temporary file database and an available local port. None opens or migrates `backend/data/shortener.mv.db`.
+
+From `backend/`, run `.\mvnw.cmd test` for the 55 unit/API/migration cases, or `.\mvnw.cmd verify` for those cases plus packaging and the process-restart integration test (56 backend checks total). On macOS/Linux, use `./mvnw` instead. The packaged test uses the same JDK as Maven, starts two backend processes sequentially, and cleans them up; it does not require a manually running backend.
 
 In Vitest tests, `expect` checks an outcome, `vi.fn()` creates a controllable substitute, and `mockResolvedValue` supplies a fake asynchronous response. React Testing Library queries elements by their accessible role and name; `userEvent` simulates interactions. In Playwright, `page.route` replaces the API only in the isolated browser suite. The live suite has no API interception.
 
@@ -16,12 +28,12 @@ In Vitest tests, `expect` checks an outcome, `vi.fn()` creates a controllable su
 
 | File | Cases | What it checks |
 | --- | ---: | --- |
-| `src/App.test.jsx` | 10 | Landing content, labels/navigation, blank and missing-scheme feedback, Enter submission, pending/duplicate handling, backend validation and correction, network retry, stale-result removal, copy success, and clipboard failure |
-| `src/api.test.js` | 18 | Quick input feedback, exact request content, backend validation messages, non-JSON errors, rate-limit feedback, generic server errors, network/timeout failures, and malformed/unsafe success payloads |
-| `browser/shortening.spec.js` | 6 | Result rendering and long-URL wrapping at 360/390/768/1280px, keyboard entry/focus, and clipboard denial in a real browser with a stubbed API |
-| `integration/live-api.spec.js` | 2 | Real API creation, strictly shorter output, actual clipboard contents, saved-code lookup and exact 302 Location, plus a real too-short validation error |
+| `src/App.test.jsx` | 10 | Landing content, labels/navigation, unvalidated blank/missing-scheme/short submissions, Enter submission, pending handling, network retry, stale-result removal, and clipboard feedback |
+| `src/api.test.js` | 17 | Exact request/response preservation, blank/short/missing-scheme input, request errors, server/network failures, and malformed generated-link responses |
+| `browser/shortening.spec.js` | 6 | Result rendering and long-URL wrapping at 360/390/768/1280px, keyboard submission of empty input, and clipboard denial in a real browser with a stubbed API |
+| `integration/live-api.spec.js` | 2 | Real API creation, actual clipboard contents, saved-code lookup and exact 302 Location, plus acceptance of a short destination with longer output |
 
-The frontend only checks blank input and the scheme for immediate feedback. Detailed URL validation stays in the backend. The API client also validates returned links before rendering them as clickable URLs.
+The frontend submits strings unchanged without destination validation. The API client checks the generated short URL and response shape, but does not validate the submitted/returned originalUrl. Backend API tests also verify verbatim storage and input above 4096 characters.
 
 ## Commands
 

@@ -1,5 +1,5 @@
 import { useRef, useState } from 'react';
-import { createLink, validateInput } from './api.js';
+import { createLink } from './api.js';
 import Icon from './Icons.jsx';
 
 export default function App() {
@@ -18,12 +18,6 @@ export default function App() {
     setResult(null);
     setCopyState('idle');
     resultVersion.current += 1;
-    const message = validateInput(input);
-    if (message) {
-      setError({ message, fieldError: true });
-      inputRef.current.focus();
-      return;
-    }
     setError(null);
     setPending(true);
     submitting.current = true;
@@ -80,12 +74,12 @@ export default function App() {
             <section className="shortener-card" aria-labelledby="form-title">
               <div className="card-heading"><span className="card-icon"><Icon name="link" /></span><span className="step-label">MAKE ROOM FOR LESS</span></div>
               <h2 id="form-title">Let’s keep it short.</h2>
-              <p className="card-description">Your destination stays the same. The journey gets a little shorter.</p>
+              <p className="card-description">Your destination stays the same. Get a new link to share.</p>
 
               <form onSubmit={handleSubmit} noValidate aria-busy={pending}>
                 <label htmlFor="original-url">Your long URL</label>
                 <input ref={inputRef} id="original-url" name="originalUrl" type="text" inputMode="url" autoComplete="url" autoCapitalize="none" spellCheck="false" value={input} onChange={handleChange} readOnly={pending} placeholder="https://example.com/something-worth-sharing" aria-invalid={Boolean(error?.fieldError)} aria-describedby={`url-hint${error ? ' form-error' : ''}`} />
-                <p id="url-hint" className="input-hint">Include https:// or http://. Up to 4,096 characters.</p>
+                <p id="url-hint" className="input-hint">Your destination is saved exactly as entered.</p>
                 {error && <p id="form-error" className="form-error" role="alert">{error.message}</p>}
                 <button className="primary-button" type="submit" disabled={pending}>{pending ? <><span className="spinner" aria-hidden="true" /> Shortening…</> : <>Shorten my link <Icon name="arrow" /></>}</button>
                 <p className="pending-announcement sr-only" role="status">{pending ? 'Creating your short link.' : ''}</p>
@@ -102,7 +96,7 @@ export default function App() {
                 <p className={copyState === 'failed' ? 'copy-message copy-error' : 'copy-message sr-only'} role="status">{copyState === 'failed' ? 'Couldn’t copy automatically. Select the short URL above and copy it manually.' : copyState === 'copied' ? 'Short link copied to clipboard.' : ''}</p>
               </section>}
 
-              <div className="card-footer"><Icon name="check" /><span>Only shorter links. Always your original destination.</span></div>
+              <div className="card-footer"><Icon name="check" /><span>Your link. Your original destination.</span></div>
             </section>
             <p className="under-card">A little less to type. A little easier to share.</p>
           </div>

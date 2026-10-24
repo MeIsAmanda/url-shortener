@@ -1,6 +1,5 @@
 package com.amanda.urlshortener.web;
 
-import com.amanda.urlshortener.link.InvalidUrlException;
 import com.amanda.urlshortener.link.LinkNotFoundException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -12,11 +11,6 @@ import org.springframework.web.bind.annotation.*;
 public class ApiExceptionHandler extends org.springframework.web.servlet.mvc.method.annotation.ResponseEntityExceptionHandler {
     private static final Logger log = LoggerFactory.getLogger(ApiExceptionHandler.class);
     public record ApiError(String code, String message) { }
-
-    @ExceptionHandler(InvalidUrlException.class)
-    ResponseEntity<ApiError> invalid(InvalidUrlException ex) {
-        return ResponseEntity.badRequest().body(new ApiError("INVALID_URL", ex.getMessage()));
-    }
 
     @Override
     protected ResponseEntity<Object> handleHttpMessageNotReadable(HttpMessageNotReadableException ex,

@@ -27,16 +27,18 @@ for (const width of [360, 390, 768, 1280]) {
   });
 }
 
-test('supports keyboard navigation and announces validation', async ({ page }) => {
+test('supports keyboard navigation and submits empty input unchanged', async ({ page }) => {
+  await page.route('**/api/urls', async (route) => {
+    expect(route.request().postDataJSON()).toEqual({ originalUrl: '' });
+    await route.fulfill({ status: 201, json: { originalUrl: '', shortUrl } });
+  });
   await page.goto('/');
   await page.keyboard.press('Tab');
   await expect(page.getByRole('link', { name: 'Skip to content' })).toBeFocused();
   const input = page.getByRole('textbox', { name: 'Your long URL' });
   await input.focus();
   await input.press('Enter');
-  await expect(page.getByRole('alert')).toContainText('Enter a URL');
-  await expect(input).toBeFocused();
-  await expect(input).toHaveAttribute('aria-invalid', 'true');
+  await expect(page.getByRole('link', { name: 'Open link' })).toHaveAttribute('href', shortUrl);
 });
 
 test('shows clipboard guidance when the browser denies access', async ({ page }) => {

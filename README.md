@@ -100,6 +100,8 @@ Windows PowerShell:
 
 Tests use a separate in-memory database and do not modify saved development links. The Mockito subclass mock maker is configured because these tests only mock interfaces and non-final classes; it avoids requiring runtime Java agent attachment.
 
+Run `.\mvnw.cmd verify` on Windows (or `./mvnw verify` on macOS/Linux) for the complete backend check: 55 unit/API/migration cases, executable JAR packaging, and one packaged-application restart test. The restart test starts and stops its own backend processes using a temporary H2 file and an available port. Migration tests also use temporary files; no development data is opened.
+
 From `frontend/`:
 
 ```powershell
@@ -121,12 +123,12 @@ The workflow is already defined in [.github/workflows/checks.yml](.github/workfl
 
 After the source is pushed, the workflow runs on pushes and pull requests, and supports a manual run from the Actions tab:
 
-- **Backend tests and build:** Java 25, Maven tests, and packaging (`verify`).
+- **Backend tests and build:** Java 25, Maven tests, packaging, and the packaged-application restart check (`verify`).
 - **Frontend tests and build:** Node 24, locked dependency installation, component/API-client tests, build, and six Chromium browser checks.
 
 You do not need to recreate the workflow through GitHub's website. If Actions is disabled by repository or organisation policy, enable or request access there. Requiring the two checks before merging is a separate branch-rules setting you can configure on GitHub after the checks have run. No secrets or deployment credentials are needed for this workflow.
 
-The workflow has been prepared locally; no repository was created or pushed, and no hosted GitHub run is claimed. Optional live browser checks, security scanning, and load tests are not included in CI yet.
+The workflow is prepared; confirm the latest revision's results in GitHub after pushing. No hosted result is claimed by this verification record. Optional live browser checks, security scanning, and load tests are not included in CI yet.
 
 ## Configuration
 
@@ -138,7 +140,7 @@ The workflow has been prepared locally; no repository was created or pushed, and
 | DATABASE_USERNAME | sa | Database username |
 | DATABASE_PASSWORD | empty | Local development database password |
 
-`PUBLIC_BASE_URL` must be an HTTP(S) origin, without a path, query, credentials, or fragment. It must point to a reachable backend route. When using a phone, localhost refers to the phone itself; configure the computer's reachable address and network access for later device testing. Increasing the base URL length can prevent some inputs from being shortened.
+`PUBLIC_BASE_URL` must be an HTTP(S) origin, without a path, query, credentials, or fragment. It must point to a reachable backend route. When using a phone, localhost refers to the phone itself; configure the computer's reachable address and network access for later device testing. The generated URL is returned regardless of whether it is shorter than the input.
 
 The empty database password is for a local demonstration. Configure credentials for any hosted environment. The H2 console is disabled. Do not expose this unfinished milestone publicly.
 
@@ -147,31 +149,41 @@ The empty database password is for a local demonstration. Configure credentials 
 | Request | Expected behaviour |
 | --- | --- |
 | POST /api/urls with originalUrl | Save mapping; return 201 and Location header |
-| GET /s/{seven-character code} | 302 redirect to original destination |
-| Invalid or already-short URL | 400 with error code and message |
+| GET /s/{code} (1–11 alphanumeric characters) | 302 redirect to original destination |
+| Malformed JSON | 400 with INVALID_REQUEST |
 | Unknown short code | 404 with LINK_NOT_FOUND |
 
-- Only correctly formed HTTP(S) URLs with a hostname are accepted.
-- Surrounding spaces are trimmed; control characters and embedded credentials are rejected.
-- Input limit is 4096 characters. International domain names should use their ASCII/punycode form.
-- The entire generated URL must be strictly shorter than the trimmed destination.
+- Submitted destination strings are assumed valid and stored exactly as supplied, including whitespace. Creation does not validate syntax, schemes, hosts, credentials, or website existence.
+- Generated URLs are returned even when they are equal in length or longer than the input.
+- Flyway V3 changes the destination column to CLOB, removing the old 4096-character cap.
 - Destination path, case, query string, and fragment are preserved.
-- The server never fetches destinations. Syntax validation does not establish that a destination is reachable or safe.
+- The server never fetches destinations. Successfully saving a string does not guarantee that it can be used as a redirect destination.
 - Repeated submissions create new mappings.
-- Codes are random alphanumeric strings with a database uniqueness constraint and at most five attempts to resolve collisions.
-- The service intentionally has no outer transaction around the collision loop; each failed insert rolls back before retry.
+- New links use a positive database-sequence ID encoded as Base62 (`0–9`, `A–Z`, `a–z`). Codes are case-sensitive, unpadded, and 1–11 characters long. A fresh database starts with `1`; existing databases may start higher to preserve old links.
+- ID allocation happens before insertion. Rejected or failed requests can leave gaps; allocated IDs are not recycled. Database failures are returned as server errors rather than retried as code collisions.
+- The database retains both primary-key and code uniqueness constraints. Existing seven-character aliases keep their stored destinations, including aliases with leading zeros.
+
+## Database upgrade and ID allocation
+
+Flyway applies versioned H2 migrations at startup; Hibernate now validates the schema. Before the first upgraded launch against existing data, stop the old backend and make a backup copy of `backend/data/`. The assistant's verification uses isolated databases and does not migrate your development database.
+
+H2 connections are initialized with `SET WRITE_DELAY 0` to remove its default delayed commit flushing, including with custom H2 URLs. This is a durability choice; its write-latency impact has not been measured.
+
+V1 adopts the original table. V2 expands the code column to 11 characters, removes identity-column generation, and creates `short_link_id_seq` above both existing row IDs and decoded legacy codes. V3 widens the destination column to CLOB without changing IDs or saved values. These migrations preserve mappings and prevent the new numeric range from colliding with legacy aliases. Subsequent starts use migration history and do not restart the sequence. Restoring the older application version also requires a compatible database restore; the older identity-based application cannot use the upgraded schema unchanged.
+
+The current implementation uses embedded H2. It does not establish multi-instance capacity, and sequential codes can be guessed. The ID-source interface can support a future shared database, but that requires a tested deployment and allocator implementation. See [backend-design.md](docs/backend-design.md) for the flow, tradeoffs, and corrections to the Copilot analysis.
 
 ## Code walkthrough
 
 Read these files in order under `backend/src/main/java/com/amanda/urlshortener/`:
 
 1. `link/ShortLinkController.java`: HTTP endpoints.
-2. `link/ShortLinkService.java`: length comparison, persistence, collision retries, and resolution.
-3. `link/UrlValidator.java`: validation without network requests.
-4. `link/ShortLink.java` and `ShortLinkRepository.java`: database mapping and lookup.
+2. `link/ShortLinkService.java`: allocation, encoding, exact destination storage, and resolution.
+3. `link/LinkIdAllocator.java`, `DatabaseLinkIdAllocator.java`, and `Base62Encoder.java`: ID-source boundary and compact encoding.
+4. `link/ShortLink.java` and `ShortLinkRepository.java`: assigned IDs, database mapping, and lookup.
 5. `web/ApiExceptionHandler.java`: client-facing errors.
 
-Then read the three test classes under `src/test/java/`. The service unit tests isolate database behaviour with mocks; the API tests run with a real H2 database and the Spring web application context.
+Then read the four unit/API/migration test classes and `ShortLinkRestartIT` under `src/test/java/`, followed by the migrations under `src/main/resources/db/migration/` and `src/main/java/db/migration/`. Service unit tests isolate database behavior; API tests exercise real H2 and Spring; migration tests verify file-backed legacy data; the packaged test verifies persistence after an immediate process stop.
 
 ## Next milestones
 
@@ -185,4 +197,4 @@ See [verification results](docs/verification.md), [the project plan](docs/projec
 
 ## Current limitations
 
-No rate limiting, authentication, abuse detection, destination reputation checks, or production database migrations yet. The application input limit does not yet impose a total HTTP body size limit. Errors on unknown links currently return JSON rather than a browser-friendly page. H2 schema updates simplify this milestone; production should use controlled migrations and a suitable database. Security scans and load tests have not been run. Google Fonts are optional external styling requests; system fonts remain available if they cannot load. No public deployment or hosted CI run is claimed.
+Destination validation and a strict-shortening guarantee are intentionally absent. No rate limiting, authentication, abuse detection, destination reputation checks, or total HTTP body size limit is implemented yet. Errors on unknown links currently return JSON rather than a browser-friendly page. Versioned migrations currently target H2; a production/shared database needs its own tested migrations and ID allocator. Security scans and load tests have not been run. Google Fonts are optional external styling requests; system fonts remain available if they cannot load. No public deployment or hosted CI result is claimed here.

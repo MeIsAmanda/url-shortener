@@ -8,15 +8,6 @@ export class LinkRequestError extends Error {
   }
 }
 
-// This is a feedback check, not a second implementation of backend validation.
-export function validateInput(input) {
-  if (!input.trim()) return 'Enter a URL to get started.';
-  if (!/^https?:\/\//i.test(input.trim())) {
-    return 'Include https:// or http:// at the start of your URL.';
-  }
-  return '';
-}
-
 function isHttpUrl(value) {
   if (typeof value !== 'string') return false;
   try {
@@ -33,7 +24,7 @@ export async function createLink(originalUrl) {
     response = await fetch('/api/urls', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      // Preserve the submitted destination; the backend owns trimming and validation.
+      // Store the submitted string unchanged; destination validity is assumed.
       body: JSON.stringify({ originalUrl }),
       signal: AbortSignal.timeout(15000),
     });
@@ -46,8 +37,7 @@ export async function createLink(originalUrl) {
   if (!response.ok) {
     if (response.status === 400) {
       throw new LinkRequestError(
-        typeof data?.message === 'string' ? data.message : 'Check your URL and try again.',
-        true,
+        typeof data?.message === 'string' ? data.message : 'We couldn’t process the request. Please try again.',
       );
     }
     if (response.status === 429) {
@@ -56,7 +46,7 @@ export async function createLink(originalUrl) {
     throw new LinkRequestError('We couldn’t shorten this link right now. Please try again.');
   }
 
-  if (!isHttpUrl(data?.shortUrl) || !isHttpUrl(data?.originalUrl)) {
+  if (!isHttpUrl(data?.shortUrl) || typeof data?.originalUrl !== 'string') {
     throw new LinkRequestError('We received an unexpected response. Please try again.');
   }
   return { originalUrl: data.originalUrl, shortUrl: data.shortUrl };

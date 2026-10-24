@@ -4,7 +4,9 @@ Act as a senior full stack engineer helping me learn.
 CONTEXT
 I am building a URL shortener for a technical assessment.
 Backend: Java 25, Spring Boot, H2.
+Link IDs: database sequence followed by Base62 encoding; Flyway migrations preserve legacy aliases.
 Frontend: React.
+Destination policy: assume valid input, store the exact string, and create a mapping regardless of output length.
 Describe the relevant existing code here.
 
 TASK

@@ -23,22 +23,22 @@ describe('the shortening journey', () => {
     expect(screen.getByRole('heading', { name: 'Three steps. One small link.' })).toBeInTheDocument();
   });
 
-  it('announces blank input and focuses the field without making a request', async () => {
-    const { user, input, submit } = setup();
+  it('submits blank input without destination validation', async () => {
+    fetch.mockResolvedValue({ ok: true, status: 201, json: async () => ({ originalUrl: '', shortUrl }) });
+    const { user, submit } = setup();
     await user.click(submit);
-    expect(screen.getByRole('alert')).toHaveTextContent('Enter a URL');
-    expect(input).toHaveFocus();
-    expect(input).toHaveAttribute('aria-invalid', 'true');
-    expect(fetch).not.toHaveBeenCalled();
+    expect(await screen.findByRole('link', { name: 'Open link' })).toBeInTheDocument();
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({ originalUrl: '' });
   });
 
-  it('gives immediate scheme feedback and preserves the input', async () => {
+  it('submits input without requiring a scheme', async () => {
+    fetch.mockResolvedValue({ ok: true, status: 201, json: async () => ({ originalUrl: 'example.com', shortUrl }) });
     const { user, input, submit } = setup();
     await user.type(input, 'example.com');
     await user.click(submit);
-    expect(screen.getByRole('alert')).toHaveTextContent('Include https://');
+    expect(await screen.findByRole('link', { name: 'Open link' })).toBeInTheDocument();
     expect(input).toHaveValue('example.com');
-    expect(fetch).not.toHaveBeenCalled();
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({ originalUrl: 'example.com' });
   });
 
   it('submits with Enter and displays the real returned destination and short link', async () => {
@@ -68,17 +68,13 @@ describe('the shortening journey', () => {
     expect(await screen.findByRole('button', { name: 'Shorten my link' })).toBeEnabled();
   });
 
-  it('shows backend validation and lets the user correct and resubmit', async () => {
-    fetch.mockResolvedValueOnce({ ok: false, status: 400, json: async () => ({ message: 'This URL is already too short.' }) }).mockResolvedValueOnce(success());
+  it('accepts a short destination and displays the generated link', async () => {
+    fetch.mockResolvedValue({ ok: true, status: 201, json: async () => ({ originalUrl: 'https://x.co', shortUrl }) });
     const { user, input, submit } = setup();
     await user.type(input, 'https://x.co');
     await user.click(submit);
-    expect(await screen.findByRole('alert')).toHaveTextContent('already too short');
-    expect(input).toHaveValue('https://x.co');
-    await user.clear(input);
-    await user.type(input, originalUrl);
-    await user.click(submit);
     expect(await screen.findByRole('link', { name: 'Open link' })).toHaveAttribute('href', shortUrl);
+    expect(input).toHaveValue('https://x.co');
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 

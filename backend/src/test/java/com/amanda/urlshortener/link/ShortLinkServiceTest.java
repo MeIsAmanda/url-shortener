@@ -3,6 +3,9 @@ package com.amanda.urlshortener.link;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.dao.DataIntegrityViolationException;
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -10,71 +13,84 @@ import static org.mockito.Mockito.*;
 
 class ShortLinkServiceTest {
     private ShortLinkRepository repository;
-    private CodeGenerator generator;
+    private LinkIdAllocator allocator;
     private ShortLinkService service;
     private static final String ORIGINAL = "https://example.com/a/long/destination?campaign=assessment#section";
 
     @BeforeEach
     void setUp() {
         repository = mock(ShortLinkRepository.class);
-        generator = mock(CodeGenerator.class);
-        service = new ShortLinkService(repository, generator, new UrlValidator(), "http://localhost:8080/");
-        when(generator.generate()).thenReturn("Abc1234");
+        allocator = mock(LinkIdAllocator.class);
+        service = new ShortLinkService(repository, allocator, new Base62Encoder(), "http://localhost:8080/");
+        when(allocator.nextId()).thenReturn(1_000_000L);
     }
 
     @Test
-    void savesMappingAndReturnsStrictlyShorterUrl() {
+    void savesTheAllocatedIdAndItsBase62Code() {
         CreateLinkResponse response = service.create("  " + ORIGINAL + "  ");
-        assertEquals(ORIGINAL, response.originalUrl());
-        assertEquals("http://localhost:8080/s/Abc1234", response.shortUrl());
-        assertTrue(response.shortUrl().length() < ORIGINAL.length());
-        verify(repository).saveAndFlush(argThat(link -> link.getCode().equals("Abc1234") && link.getOriginalUrl().equals(ORIGINAL)));
+        assertEquals("  " + ORIGINAL + "  ", response.originalUrl());
+        assertEquals("http://localhost:8080/s/4C92", response.shortUrl());
+        verify(repository).saveAndFlush(argThat(link -> link.getId() == 1_000_000L
+                && link.getCode().equals("4C92") && link.getOriginalUrl().equals("  " + ORIGINAL + "  ")));
+        verify(allocator).nextId();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", "   ", "https://x.co", "example.com", "not a URL", "https://example.com\r\n"})
+    void savesSubmittedStringsWithoutDestinationOrLengthValidation(String input) {
+        CreateLinkResponse response = service.create(input);
+        assertEquals(input, response.originalUrl());
+        verify(repository).saveAndFlush(argThat(link -> input.equals(link.getOriginalUrl())));
     }
 
     @Test
-    void rejectsEqualLengthAndShorterInputsWithoutSaving() {
-        int outputLength = "http://localhost:8080/s/Abc1234".length();
-        String prefix = "https://example.com/";
-        assertThrows(InvalidUrlException.class, () -> service.create(prefix + "a".repeat(outputLength - prefix.length())));
-        assertThrows(InvalidUrlException.class, () -> service.create("https://x.co"));
-        verifyNoInteractions(repository);
-    }
-
-    @Test
-    void retriesAnInsertCollision() {
-        when(generator.generate()).thenReturn("Abc1234", "Def5678");
-        when(repository.saveAndFlush(any())).thenThrow(new DataIntegrityViolationException("duplicate")).thenReturn(new ShortLink("Def5678", ORIGINAL));
-        when(repository.existsByCode("Abc1234")).thenReturn(true);
-        assertTrue(service.create(ORIGINAL).shortUrl().endsWith("Def5678"));
+    void givesRepeatedDestinationsDistinctAllocatedCodes() {
+        when(allocator.nextId()).thenReturn(1_000_000L, 1_000_001L);
+        assertTrue(service.create(ORIGINAL).shortUrl().endsWith("/4C92"));
+        assertTrue(service.create(ORIGINAL).shortUrl().endsWith("/4C93"));
         verify(repository, times(2)).saveAndFlush(any());
     }
 
     @Test
-    void limitsCollisionRetries() {
-        when(repository.saveAndFlush(any())).thenThrow(new DataIntegrityViolationException("duplicate"));
-        when(repository.existsByCode(any())).thenReturn(true);
-        assertThrows(IllegalStateException.class, () -> service.create(ORIGINAL));
-        verify(repository, times(5)).saveAndFlush(any());
-    }
-
-    @Test
-    void doesNotHideUnrelatedDatabaseErrors() {
-        when(repository.saveAndFlush(any())).thenThrow(new DataIntegrityViolationException("other failure"));
+    void doesNotRetryOrHideDatabaseIntegrityFailures() {
+        when(repository.saveAndFlush(any())).thenThrow(new DataIntegrityViolationException("insert failed"));
         assertThrows(DataIntegrityViolationException.class, () -> service.create(ORIGINAL));
         verify(repository).saveAndFlush(any());
+        verify(allocator).nextId();
     }
 
     @Test
-    void resolvesSavedDestinationAndRejectsUnknownCode() {
-        when(repository.findByCode("Abc1234")).thenReturn(Optional.of(new ShortLink("Abc1234", ORIGINAL)));
-        assertEquals(ORIGINAL, service.resolve("Abc1234"));
+    void propagatesAnAllocatorFailureWithoutSaving() {
+        when(allocator.nextId()).thenThrow(new IllegalStateException("sequence exhausted"));
+        assertThrows(IllegalStateException.class, () -> service.create(ORIGINAL));
+        verifyNoInteractions(repository);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"1", "10", "Abc1234", "AzL8n0Y58m7"})
+    void resolvesVariableLengthAndLegacyCodesByTheirStoredMapping(String code) {
+        when(repository.findByCode(code)).thenReturn(Optional.of(new ShortLink(123L, code, ORIGINAL)));
+        assertEquals(ORIGINAL, service.resolve(code));
+    }
+
+    @Test
+    void rejectsUnknownWellFormedCodes() {
         assertThrows(LinkNotFoundException.class, () -> service.resolve("Missing"));
-        assertThrows(LinkNotFoundException.class, () -> service.resolve("!"));
     }
 
-    @Test
-    void rejectsUntrustedBaseConfiguration() {
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {"!", "a_b", "123456789012", "a b"})
+    void rejectsMalformedCodesBeforeQuerying(String code) {
+        assertThrows(LinkNotFoundException.class, () -> service.resolve(code));
+        verifyNoInteractions(repository);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"https://example.com?other=value", "https://example.com/path", "https://user:pass@example.com",
+        "https://example.com#fragment", "ftp://example.com", "https://example.com:65536"})
+    void rejectsUntrustedBaseConfiguration(String base) {
         assertThrows(IllegalArgumentException.class,
-            () -> new ShortLinkService(repository, generator, new UrlValidator(), "https://example.com?other=value"));
+            () -> new ShortLinkService(repository, allocator, new Base62Encoder(), base));
     }
 }

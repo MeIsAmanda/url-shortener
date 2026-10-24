@@ -3,6 +3,8 @@
 Submission deadline: Tuesday 27 October 2026 at 6pm Singapore time  
 Planning date: 24 October 2026
 
+Current policy update (24 October 2026): at Amanda's request, store destination strings unchanged, assume they are valid, and create mappings even when the generated URL is equal in length or longer. This replaces the earlier destination-validation and strict-shortening criteria. Website existence was never checked. JSON parsing, ID/code integrity, and application-configuration checks still apply.
+
 ## Purpose and recommended scope
 
 Build a small, complete URL shortener that demonstrates full stack development, clear engineering decisions, automated tests, and willingness to learn. Use Spring Boot for the backend and React for the frontend. Mobile support means a responsive website; a separate mobile application is unnecessary.
@@ -14,19 +16,19 @@ Complete the required features first. Introduce basic security and a lightweight
 | Requirement | Completion criteria |
 | --- | --- |
 | Web application | Landing page loads and communicates what the tool does |
-| Long URL input | Labelled text box accepts HTTP and HTTPS URLs |
-| Valid URLs only | Backend rejects invalid input; frontend provides helpful feedback |
+| URL input | Labelled text box submits the destination string unchanged |
+| Destination policy | Assume input is valid; do not check syntax, scheme, reachability, or trim it |
 | Shorten button | Clicking the button or pressing Enter submits the form |
 | Feedback view | Displays a clickable short URL and copy action |
-| Shorter output | Complete returned URL is strictly shorter than the trimmed input |
+| Output policy | Create mappings even when generated URLs are equal in length or longer |
 | Working short links | Opening a saved short link redirects to the original URL |
 | Unit tests | Meaningful backend and frontend tests run with documented commands |
-| User friendly UI | Clear loading, success, validation, and failure states |
+| User friendly UI | Clear loading, success, and request-failure states |
 | Mobile responsiveness | No horizontal overflow; controls remain usable on small screens |
 | Code quality | Clear responsibilities, consistent naming, readable errors, minimal duplication |
 | Submission | GitHub repository includes source, setup instructions, tests, and limitations |
 
-Assumption: a valid URL means a correctly formed HTTP or HTTPS URL with a hostname. It does not mean the destination has been visited or verified as safe. A URL shortener can be misused for phishing; syntax validation alone does not prevent that.
+Assumption: submitted destination strings are valid links. They are stored verbatim without syntax or reachability checks. Storing a string does not establish that a browser can follow it.
 
 ## 2 Technology choices
 
@@ -37,6 +39,8 @@ Assumption: a valid URL means a correctly formed HTTP or HTTPS URL with a hostna
 | Styling | CSS | Sufficient for a polished responsive single page |
 | Backend | Spring Boot with Maven wrapper | Demonstrates Java API and backend skills |
 | Persistence | File-based H2 with Spring Data JPA | Simple local setup and persistence across restarts |
+| Link IDs | Shared H2 sequence followed by Base62 encoding | Distinct allocated numbers and compact variable-length public codes |
+| Schema changes | Flyway migrations; Hibernate schema validation | Explicit upgrades that retain existing development links |
 | Backend tests | JUnit and Mockito | Test rules independently of the database |
 | API integration tests | Spring test support with a separate test database | Verify HTTP behaviour and persistence together |
 | Frontend tests | Vitest and React Testing Library | Verify user interactions and feedback |
@@ -49,10 +53,10 @@ Use supported stable releases compatible with each other and document the actual
 
 1. User opens the landing page and enters a long URL.
 2. React submits it to the backend.
-3. Backend trims surrounding whitespace and validates the input.
-4. Service generates a random alphanumeric code and constructs the complete short URL from a configured public base URL.
-5. Service checks that the complete output is strictly shorter than the input.
-6. Database stores the code and original destination.
+3. Backend accepts the submitted destination string without trimming or URL validation.
+4. A database-backed allocator obtains a unique positive integer from the shared H2 sequence; a separate Base62 encoder converts it to a compact code.
+5. Service constructs the generated URL from the configured public base URL without comparing lengths.
+6. Database stores the allocated ID, code, original destination, and timestamp. The primary key and code uniqueness constraint remain authoritative.
 7. UI displays the result with Open and Copy actions.
 8. GET requests to the short link return a redirect to the saved destination.
 
@@ -64,39 +68,51 @@ Keep the original destination semantics, including its path, query string, and f
 
 | Endpoint | Success | Error examples |
 | --- | --- | --- |
-| POST /api/urls | 201 with originalUrl and shortUrl | 400 invalid or too-short input; 429 if a rate limit is implemented |
+| POST /api/urls | 201 with unchanged originalUrl and generated shortUrl | 400 malformed JSON; 500 storage/allocation failure |
 | GET /s/{code} | 302 with Location header | 404 unknown code |
 
 Use a consistent JSON error structure, such as code and message. Display a friendly unknown-link page for browser users where practical. Choose one repeated-input policy and document it; generating a new mapping each time is sufficient for this scope.
 
 ### Data model
 
-- id: internal primary key.
-- code: short code with a database unique constraint and indexed lookup.
+- id: positive BIGINT allocated from a database sequence before insertion; the primary key.
+- code: Base62 encoding of the allocated ID for new links, with a database unique constraint and indexed lookup. Existing legacy aliases retain their original values.
 - originalUrl: saved destination.
 - createdAt: creation timestamp.
 
 ### Responsibilities
 
 - Controller: request and response handling.
-- Service: URL validation, length rule, code generation, collision handling, and lookups.
+- Service: coordinate ID allocation, encoding, verbatim destination storage, and lookups.
+- LinkIdAllocator: the ID-source boundary; DatabaseLinkIdAllocator uses the shared H2 sequence.
+- Base62Encoder: deterministic integer encoding using 0–9, A–Z, and a–z; no database access or randomness.
 - Repository: database access.
 - DTOs: request and response shapes.
 - Exception handler: consistent errors without internal stack traces.
 - Configuration: public base URL, database settings, and allowed frontend origin when needed.
 
-Start with a seven-character alphanumeric code. Enforce uniqueness in the database, retry collisions a bounded number of times, and fail cleanly if retries are exhausted. A pre-insert existence check alone cannot guarantee uniqueness under concurrent requests. Do not add distributed infrastructure for this assessment.
+### Revised ID allocation decision — 24 October 2026
+
+Use a database sequence followed by Base62 encoding, replacing the original random seven-character generator and retry loop. New codes are variable length (1–11 characters for positive Java longs), case-sensitive, and unpadded. Fresh databases begin at ID 1. Database failures propagate as server errors; there is no retry loop for code collisions or pre-insert existence query.
+
+Keep the mapping table and unique constraints. Redirects look up the exact stored code rather than decoding it, so legacy links, including leading-zero aliases, remain usable. Keep the current HTTP endpoints and JSON response shapes.
+
+Flyway now owns versioned H2 schema changes; Hibernate validates the schema instead of modifying it. V1 adopts the original table; V2 widens the code column, replaces identity-column allocation with a named sequence, and starts it above both all existing primary keys and the numeric values of all legacy codes. The one-time scan prevents overlap with old aliases. Migration history and sequence state survive restarts; never reset a live sequence. Back up the stopped file database before its first migrated launch. This migration supports the original seven-character legacy schema, not arbitrary custom schemas.
+
+This is a database-coordinated design, not a claim that the application reproduces Bitly's internal implementation or is already distributed. The existing backend already had a service boundary and database-enforced uniqueness. Random generation with a unique constraint can also scale. Base62 supplies compact representation; the sequence supplies unique numbers. Increasing allocated IDs need not produce completion-ordered responses, and gaps are expected after rejected requests, failed inserts, or rollbacks.
+
+Sequential public codes are enumerable. They are not credentials or authorization. The current embedded H2 file is still a single-instance assessment choice. A later deployment with multiple application instances would need a shared database and suitable allocator implementation; Redis, Snowflake, coordination services, click analytics, expiry, and status management remain outside this change. No performance improvement is claimed until measured. See [backend design](backend-design.md) for examples and migration details.
+
+Configure H2 connections with `SET WRITE_DELAY 0` so committed writes do not retain the default 500 ms flush delay. Include an immediate-stop/restart smoke check with an isolated file database. This is a persistence correctness check, not a performance test or a power-loss durability guarantee.
 
 ### Input decisions
 
-- Reject empty or whitespace-only input.
-- Trim surrounding spaces before comparison and storage.
-- Require an explicit http:// or https:// scheme and a valid hostname.
-- Reject control characters and URLs containing embedded username/password credentials.
-- Define a maximum input length, for example 4096 characters, and enforce compatible API and database limits. This is an application policy, not a universal URL limit.
-- Reject unsupported schemes such as javascript:, data:, and file:.
-- If the complete output URL is equal in length or longer, explain that the input is already too short to shorten.
-- Use one validation policy on the backend; frontend checks improve feedback but never replace it.
+- Store the submitted string exactly, including whitespace; do not normalize it.
+- Assume destination validity; do not check syntax, scheme, host, credentials, control characters, or website existence during creation.
+- Do not compare generated URL length with input length.
+- Remove the old 4096-character cap. Flyway V3 widens the destination column to CLOB, preserving mappings and allocator state.
+- Remove matching frontend input checks. Keep network, malformed-request, and clipboard error feedback.
+- Redirects still need a usable HTTP Location header; an unusable saved destination can fail when opened. Creation does not guarantee a usable redirect.
 
 ## 5 Frontend and mobile outline
 
@@ -126,13 +142,13 @@ Use this simple prompt structure:
 
 ### Reusable example
 
-> Context: I am building a URL shortener with Spring Boot and React. POST /api/urls accepts an originalUrl and returns a shortUrl. Only HTTP and HTTPS URLs with a hostname are accepted. The full generated URL must be shorter than the trimmed input. The public base URL is configurable.
+> Context: I am building a URL shortener with Spring Boot and React. POST /api/urls accepts an originalUrl and returns a shortUrl. Destination strings are stored unchanged and assumed valid. Generated output need not be shorter. The public base URL is configurable.
 >
-> Task: Review the attached validation service for missing edge cases. Do not change unrelated files.
+> Task: Review mapping creation and exact input preservation. Do not change unrelated files.
 >
 > Constraints: Do not fetch destination URLs, add dependencies, introduce authentication, or change destination query parameters. Explain any uncertainty.
 >
-> Acceptance criteria: Reject blank input, unsupported schemes, missing hostname, embedded credentials, control characters, and URLs above the configured length limit. Preserve valid query strings and fragments.
+> Acceptance criteria: Preserve submitted strings exactly, including whitespace, query strings, and fragments. Accept short strings and strings beyond the former 4096-character cap. Keep generated codes unique.
 >
 > Output: List findings with reasons, propose the smallest changes, and suggest tests.
 >
@@ -144,7 +160,7 @@ Keep a concise docs/ai-usage.md with a few useful prompts, what you accepted or 
 
 ### Build basic protections early
 
-- Enforce backend validation and input limits from the start.
+- Current destination policy assumes valid input. Review request-body limits in the later security milestone; destination validation is intentionally absent.
 - Never fetch or preview a submitted destination on the server. This avoids introducing server-side request forgery through a destination-fetch feature.
 - Use repository parameter binding instead of constructing SQL from input.
 - Render URLs as text and safe link attributes; do not insert user input as HTML.
@@ -210,10 +226,11 @@ Time budget: about 60 to 90 minutes for a useful initial script and report; deep
 
 ### Backend unit tests
 
-- Valid HTTP and HTTPS input, including query strings and fragments.
-- Empty, malformed, missing-host, unsupported-scheme, control-character, credential, and over-limit input.
-- Whitespace trimming and strict full-output length comparison, including equal lengths.
-- Successful code generation, collision retry, and bounded retry failure.
+- Exact string preservation, including whitespace, empty strings, missing schemes, and short inputs.
+- Inputs above the former 4096-character storage limit.
+- Base62 known values, digit-length boundaries, negative input rejection, and the full positive-long range.
+- Store the allocated ID, its encoding, and the unmodified submitted destination.
+- Allocator and insert failures propagate without retries or false success.
 - Known-code lookup and unknown-code behaviour.
 
 ### Integration tests
@@ -222,6 +239,10 @@ Time budget: about 60 to 90 minutes for a useful initial script and report; deep
 - GET returns the correct redirect status and exact Location.
 - Invalid requests return consistent errors.
 - Database uniqueness is enforced.
+- Concurrent creation produces distinct IDs/codes; duplicate assigned IDs cannot overwrite existing destinations.
+- Fresh and legacy H2 schemas migrate correctly; aliases and sequence state survive database reopen.
+- Rolled-back allocations are not reused and exhausted sequences fail instead of cycling.
+- Packaged-application restart check runs after JAR creation during `mvn verify`: stop the process immediately after a successful POST, restart with the same temporary file database, and verify the saved redirect and advancing sequence.
 - Separate test database does not modify local development data.
 
 ### Frontend tests and manual checks
@@ -256,7 +277,7 @@ Protect a submission buffer. If behind, cut optional ZAP, elaborate monitoring, 
 ## 12 Final submission checklist
 
 - [ ] Required user journey works, including real redirects.
-- [ ] Every successful short URL is strictly shorter than its input.
+- [ ] Submitted strings are preserved; mapping creation does not require shorter output.
 - [ ] Unit tests pass and frontend/backend builds succeed.
 - [ ] Mobile and keyboard checks completed.
 - [ ] Core security protections implemented and findings reviewed.
