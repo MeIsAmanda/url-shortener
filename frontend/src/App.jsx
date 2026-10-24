@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import { createLink } from './api.js';
 import CuttingScene from './CuttingScene.jsx';
+import SnipInput from './SnipInput.jsx';
 import Icon from './Icons.jsx';
 
 export default function App() {
@@ -61,12 +62,12 @@ export default function App() {
   }
 
   return (
-    <div className="shortly-page">
+    <div className="sniply-page">
       <a className="skip-link" href="#main">Skip to content</a>
       <header className="site-header page-width">
-        <a className="wordmark" href="#" aria-label="Shortly home">
+        <a className="wordmark" href="#" aria-label="Sniply home">
           <span className="brand-mark"><Icon name="scissors" /></span>
-          shortly<span className="wordmark-dot">.</span>
+          sniply<span className="wordmark-dot">.</span>
         </a>
         <span className="header-note"><Icon name="sparkles" /> a little internet magic</span>
       </header>
@@ -84,37 +85,25 @@ export default function App() {
         <section className="paper-window" aria-label="Link shortener">
           <div className="window-bar">
             <span className="window-dots" aria-hidden="true"><i /><i /><i /></span>
-            <span className="window-title"><Icon name="globe" /> the little link studio</span>
             <span className="window-star" aria-hidden="true"><Icon name="sparkles" /></span>
           </div>
 
           <div className="window-body">
-            <div className="scene-frame">
-              <CuttingScene key={snipCount} active={snipCount > 0} />
-              <span className="scene-caption" aria-hidden="true">{pending ? 'snip in progress…' : 'a small snip of happiness'}</span>
-            </div>
-
             <form onSubmit={handleSubmit} noValidate aria-busy={pending}>
-              <label htmlFor="original-url"><Icon name="link" /> Your long URL</label>
-              <div className="form-row">
-                <div className="input-wrap">
-                  <input
-                    ref={inputRef}
-                    id="original-url"
-                    name="originalUrl"
-                    type="text"
-                    inputMode="url"
-                    autoComplete="url"
-                    autoCapitalize="none"
-                    spellCheck="false"
-                    value={input}
-                    onChange={(event) => updateInput(event.target.value)}
-                    readOnly={pending}
-                    placeholder="Pop your link in here…"
-                    aria-describedby={error ? 'url-hint form-error' : 'url-hint'}
-                  />
-                  <button className="clear-button" type="button" aria-label="Clear URL" onClick={clearInput} disabled={pending || !input}><Icon name="close" /></button>
-                </div>
+              <div className="scene-frame">
+                <CuttingScene key={snipCount} active={snipCount > 0} />
+                <SnipInput
+                  inputRef={inputRef}
+                  value={input}
+                  pending={pending}
+                  error={error}
+                  run={snipCount}
+                  onChange={updateInput}
+                  onClear={clearInput}
+                />
+                <span className="scene-caption" aria-hidden="true">{pending ? 'snip in progress…' : 'a small snip of happiness'}</span>
+              </div>
+              <div className="form-actions">
                 <button className="primary-button" type="submit" disabled={pending}>
                   <Icon name="scissors" />
                   {pending ? 'Snipping…' : 'Snip my link'}

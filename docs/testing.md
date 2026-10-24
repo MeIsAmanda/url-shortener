@@ -28,14 +28,18 @@ In Vitest tests, `expect` checks an outcome, `vi.fn()` creates a controllable su
 
 | File | Cases | What it checks |
 | --- | ---: | --- |
-| `src/App.test.jsx` | 11 | Compact labelled tool without the old instructions, clear/reset and focus, unvalidated blank/missing-scheme/short submissions, Enter submission, pending handling, network retry, stale-result removal, and clipboard feedback |
+| `src/App.test.jsx` | 12 | Compact labelled tool, one native textbox, clear/reset, input identity/value/focus across Enter submission, unvalidated submissions, pending handling, network retry, stale-result removal, and clipboard feedback |
 | `src/api.test.js` | 17 | Exact request/response preservation, blank/short/missing-scheme input, request errors, server/network failures, and malformed generated-link responses |
-| `browser/shortening.spec.js` | 10 | Results and expanded-original wrapping at 320/360/390/768/1280px and 844×390 landscape, keyboard submission, clipboard denial, animation replay without delaying fast results, and reduced-motion behavior |
+| `browser/shortening.spec.js` | 11 | Live-field clickability and results at 320/360/390/768/1280px and 844×390 landscape, keyboard submission, clipboard denial, animation replay, reduced motion, field position in the scene, and immediate restoration when editing during the cut |
 | `integration/live-api.spec.js` | 2 | Real API creation, actual clipboard contents, saved-code lookup and exact 302 Location, plus acceptance of a short destination with longer output |
 
 The frontend submits strings unchanged without destination validation. The API client checks the generated short URL and response shape, but does not validate the submitted/returned originalUrl. Backend API tests also verify verbatim storage and input above 4096 characters.
 
 The illustration is in `frontend/src/CuttingScene.jsx`; submission-driven transforms and opacity are in `src/styles.css`. It remounts once per submission to replay the finite animation and is memoized so input/copy updates do not redraw it. There is no minimum loading duration or animation-completion gate. Browser checks verify that a fast response is already usable while the scene still animates, and that reduced motion disables the scene animation. These are functional checks, not a frames-per-second benchmark. Open **Original link** to inspect the submitted destination; it stays collapsed initially to keep the result compact.
+
+`frontend/src/SnipInput.jsx` keeps the actual input mounted inside the scissors scene. Two clipped, screen-reader-hidden visual copies provide the splitting effect; they do not accept input or intercept pointers. Pointer/focus/typing cancels the field effect immediately, and errors restore the normal field. Tests scope original-destination assertions to the result region so these decorative copies are not mistaken for additional output. With `CAPTURE_SCREENSHOTS=1`, the live suite also captures `docs/screenshots/input-cutting-desktop.png` at a deterministic mid-animation frame; ordinary test runs do not pause animations.
+
+The input's accessible label is **Put your long URL here!**; the curly arrow is decorative and hidden from screen readers. Responsive browser checks also verify the Sniply page title and that the confetti stays below the input.
 
 ## Commands
 

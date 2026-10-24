@@ -18,13 +18,20 @@ for (const [width, height] of [[320, 780], [360, 900], [390, 900], [768, 900], [
     await page.setViewportSize({ width, height });
     await mockSuccess(page);
     await page.goto('/');
+    await expect(page).toHaveTitle('Sniply — Small links, ready to share');
     await expect(page.getByRole('heading', { level: 1 })).toBeVisible();
-    await page.getByRole('textbox', { name: 'Your long URL' }).fill(originalUrl);
-    await page.getByRole('textbox', { name: 'Your long URL' }).press('Enter');
+    await expect(page.getByText('the little link studio', { exact: true })).toHaveCount(0);
+    const inputBox = await page.getByRole('textbox', { name: 'Put your long URL here!' }).boundingBox();
+    const confettiBox = await page.locator('.scene-confetti').boundingBox();
+    expect(confettiBox.y).toBeGreaterThan(inputBox.y + inputBox.height);
+    await page.getByRole('textbox', { name: 'Put your long URL here!' }).click();
+    await expect(page.getByRole('textbox', { name: 'Put your long URL here!' })).toBeFocused();
+    await page.getByRole('textbox', { name: 'Put your long URL here!' }).fill(originalUrl);
+    await page.getByRole('textbox', { name: 'Put your long URL here!' }).press('Enter');
     await expect(page.getByRole('link', { name: 'Open link' })).toHaveAttribute('href', shortUrl);
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.getByText('Original link', { exact: true }).click();
-    await expect(page.getByText(originalUrl, { exact: true })).toBeVisible();
+    await expect(page.getByRole('region', { name: 'Freshly snipped!' }).getByText(originalUrl, { exact: true })).toBeVisible();
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   });
 }
@@ -37,7 +44,7 @@ test('supports keyboard navigation and submits empty input unchanged', async ({ 
   await page.goto('/');
   await page.keyboard.press('Tab');
   await expect(page.getByRole('link', { name: 'Skip to content' })).toBeFocused();
-  const input = page.getByRole('textbox', { name: 'Your long URL' });
+  const input = page.getByRole('textbox', { name: 'Put your long URL here!' });
   await input.focus();
   await input.press('Enter');
   await expect(page.getByRole('link', { name: 'Open link' })).toHaveAttribute('href', shortUrl);
@@ -50,7 +57,7 @@ test('shows clipboard guidance when the browser denies access', async ({ page })
   }));
   await mockSuccess(page);
   await page.goto('/');
-  await page.getByRole('textbox', { name: 'Your long URL' }).fill(originalUrl);
+  await page.getByRole('textbox', { name: 'Put your long URL here!' }).fill(originalUrl);
   await page.getByRole('button', { name: 'Snip my link' }).click();
   await page.getByRole('button', { name: 'Copy link' }).click();
   await expect(page.getByText(/copy it manually/)).toBeVisible();
@@ -61,7 +68,7 @@ test('plays and replays the snip without making a fast API result wait', async (
   await page.goto('/');
   const scene = page.getByTestId('cutting-scene');
   const initialScene = await scene.elementHandle();
-  await page.getByRole('textbox', { name: 'Your long URL' }).fill(originalUrl);
+  await page.getByRole('textbox', { name: 'Put your long URL here!' }).fill(originalUrl);
   await page.getByRole('button', { name: 'Snip my link' }).click();
   await expect(page.getByRole('link', { name: 'Open link' })).toBeVisible();
   // The result is already usable while the independent 1.1-second snip plays.
@@ -78,8 +85,29 @@ test('keeps the result usable with reduced motion and no decorative animations',
   await page.emulateMedia({ reducedMotion: 'reduce' });
   await mockSuccess(page);
   await page.goto('/');
-  await page.getByRole('textbox', { name: 'Your long URL' }).fill(originalUrl);
+  await page.getByRole('textbox', { name: 'Put your long URL here!' }).fill(originalUrl);
   await page.getByRole('button', { name: 'Snip my link' }).click();
   await expect(page.getByRole('link', { name: 'Open link' })).toBeVisible();
   expect(await page.getByTestId('cutting-scene').evaluate((svg) => svg.getAnimations({ subtree: true }).filter((animation) => animation.playState === 'running').length)).toBe(0);
+});
+
+test('cuts the actual editable field and restores it immediately when editing resumes', async ({ page }) => {
+  await mockSuccess(page);
+  await page.goto('/');
+  const input = page.getByRole('textbox', { name: 'Put your long URL here!' });
+  const originalNode = await input.elementHandle();
+  const fieldBox = await input.boundingBox();
+  const sceneBox = await page.getByTestId('cutting-scene').boundingBox();
+  expect(fieldBox.y).toBeGreaterThan(sceneBox.y);
+  expect(fieldBox.y + fieldBox.height).toBeLessThan(sceneBox.y + sceneBox.height / 2);
+  await input.fill(originalUrl);
+  await page.getByRole('button', { name: 'Snip my link' }).click();
+  await expect(page.getByRole('link', { name: 'Open link' })).toBeVisible();
+  // A very fast response must not leave the animated field blocking editing.
+  await input.click();
+  await input.fill('changed destination');
+  await expect(input).toHaveValue('changed destination');
+  await expect(page.getByRole('link', { name: 'Open link' })).toHaveCount(0);
+  expect(await originalNode.evaluate((node) => node.isConnected)).toBe(true);
+  expect(await input.evaluate((node) => getComputedStyle(node.parentElement).opacity)).toBe('1');
 });

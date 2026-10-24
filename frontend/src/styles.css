@@ -21,7 +21,7 @@ button:disabled { cursor: wait; }
 a { color: inherit; }
 svg { width: 22px; height: 22px; flex-shrink: 0; }
 :focus-visible { outline: 3px solid #3c73a4; outline-offset: 5px; }
-.shortly-page {
+.sniply-page {
   min-height: 100svh;
   display: flex;
   flex-direction: column;
@@ -51,12 +51,13 @@ h1 > span > svg { position: absolute; width: 100%; height: 13px; bottom: -11px; 
 .window-dots i { width: 10px; height: 10px; border: 1.5px solid var(--ink); border-radius: 50%; background: #fffaf0; }
 .window-dots i:first-child { background: #f1b4c7; }
 .window-dots i:nth-child(2) { background: var(--yellow); }
-.window-title { display: flex; align-items: center; gap: 8px; font-size: 11px; font-weight: 600; letter-spacing: .3px; }
-.window-title svg { width: 16px; height: 16px; }
 .window-star svg { width: 19px; height: 19px; }
 .window-body { padding: 13px 34px 21px; }
-.scene-frame { position: relative; margin: 0 0 22px; }
-.cutting-scene { display: block; width: 100%; height: auto; max-height: 281px; }
+.scene-frame { position: relative; isolation: isolate; overflow: hidden; margin: 0 0 10px; }
+.cutting-scene { position: relative; z-index: 3; display: block; width: max(100%, 500px); height: auto; margin-left: 50%; transform: translateX(-50%); pointer-events: none; }
+.scene-field { position: absolute; z-index: 2; top: 17.317073%; left: 5%; width: 90%; transform: translateY(-50%); }
+.scene-field > label { position: absolute; left: 1px; bottom: calc(100% + 8px); margin: 0; white-space: nowrap; }
+.scene-field .input-arrow { position: absolute; left: calc(100% + 6px); top: -2px; width: 40px; height: 29px; color: #527da2; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; pointer-events: none; }
 .scene-caption { position: absolute; top: 64%; right: 4%; max-width: 145px; font-family: 'Fredoka', 'Trebuchet MS', sans-serif; color: #76859a; font-size: 15px; line-height: 1.3; transform: rotate(-7deg); }
 .sticker { position: absolute; display: none; z-index: 1; align-items: center; justify-content: center; border: 2px solid var(--ink); box-shadow: 3px 3px 0 #30405714; }
 .sticker--link { left: 0; top: 210px; width: 64px; height: 64px; background: var(--yellow); border-radius: 17px; transform: rotate(-14deg); }
@@ -66,8 +67,19 @@ h1 > span > svg { position: absolute; width: 100%; height: 13px; bottom: -11px; 
 .sticker--heart span { font-size: 9px; font-weight: 600; }
 label { display: flex; align-items: center; gap: 7px; margin-bottom: 10px; font-size: 13px; font-weight: 700; }
 label svg { width: 16px; height: 16px; }
-.form-row { display: flex; align-items: stretch; gap: 11px; }
+.form-actions { display: flex; justify-content: center; }
+.form-actions .primary-button { min-width: 210px; }
 .input-wrap { position: relative; flex: 1; min-width: 0; }
+.live-input { position: relative; }
+.input-cut-overlay { position: absolute; inset: 0; pointer-events: none; }
+.input-slice { position: absolute; inset: 0; opacity: 0; pointer-events: none; }
+.input-slice--left { clip-path: inset(-8px 50% -8px -8px); }
+.input-slice--right { clip-path: inset(-8px -8px -8px 50%); }
+.input-facade { height: 56px; padding: 15px 42px 15px 15px; border: 2px solid #b2bdc9; border-radius: 12px; background: #fffefb; color: var(--ink); font-size: 16px; line-height: 1.4; }
+.input-facade > span { display: block; overflow: hidden; white-space: pre; }
+.input-facade > svg { position: absolute; right: 15px; top: 19px; width: 17px; height: 17px; color: #68788b; }
+.input-facade .facade-placeholder { font-size: 14px; color: #7a8593; }
+.input-cut-line { position: absolute; left: 50%; top: 3px; bottom: 3px; border-left: 2px dashed #91a3b7; opacity: 0; }
 input { width: 100%; min-width: 0; height: 56px; padding: 15px 42px 15px 15px; background: #fffefb; border: 2px solid #b2bdc9; border-radius: 12px; color: var(--ink); font-size: 16px; line-height: 1.4; }
 input::placeholder { color: #7a8593; font-size: 14px; }
 input:focus { outline: 3px solid #b4d7ed; outline-offset: 2px; border-color: #527da2; }
@@ -124,20 +136,36 @@ input[readonly] { background: #f4f7fa; }
 /* One short, transform/opacity-only sequence per submit. No animation timers,
    animation library, looping scene, or delay before displaying API results. */
 .scissor-blade { transform-box: view-box; transform-origin: 340px 102px; }
-.ribbon-piece { transform-box: view-box; transform-origin: 340px 72px; }
+.cutter { transform: translateY(76px); }
 .snip-sparks { opacity: 0; }
+.is-snipping .cutter { animation: cutter-reach 1100ms cubic-bezier(.4, 0, .2, 1) both; }
 .is-snipping .scissor-blade--left { animation: snip-left 1100ms cubic-bezier(.4, 0, .2, 1) both; }
 .is-snipping .scissor-blade--right { animation: snip-right 1100ms cubic-bezier(.4, 0, .2, 1) both; }
-.is-snipping .ribbon-piece--left { animation: ribbon-left 1100ms cubic-bezier(.4, 0, .2, 1) both; }
-.is-snipping .ribbon-piece--right { animation: ribbon-right 1100ms cubic-bezier(.4, 0, .2, 1) both; }
 .is-snipping .snip-sparks { animation: snip-sparks 1100ms ease-out both; }
-.is-snipping .cut-guide { animation: hide-guide 1100ms ease both; }
+.is-cutting .live-input { animation: var(--input-reveal-animation) 1100ms linear both; }
+.is-cutting .input-slice--left { animation: split-input-left 1100ms cubic-bezier(.4, 0, .2, 1) both; }
+.is-cutting .input-slice--right { animation: split-input-right 1100ms cubic-bezier(.4, 0, .2, 1) both; }
+.is-cutting .input-cut-line { animation: input-cut-mark 1100ms linear both; }
+@keyframes cutter-reach { 0%, 100% { transform: translateY(76px); } 24%, 72% { transform: translateY(0); } }
 @keyframes snip-left { 0%, 15% { transform: rotate(-5deg); } 38%, 62% { transform: rotate(17deg); } 49%, 80%, 100% { transform: rotate(0); } }
 @keyframes snip-right { 0%, 15% { transform: rotate(5deg); } 38%, 62% { transform: rotate(-17deg); } 49%, 80%, 100% { transform: rotate(0); } }
-@keyframes ribbon-left { 0%, 34% { transform: translate(0, 0); } 70%, 100% { transform: translate(-12px, 2px) rotate(-3deg); } }
-@keyframes ribbon-right { 0%, 34% { transform: translate(0, 0); } 70%, 100% { transform: translate(12px, 3px) rotate(3deg); } }
 @keyframes snip-sparks { 0%, 28%, 80%, 100% { opacity: 0; transform: translateY(0); } 38%, 62% { opacity: 1; transform: translateY(-4px); } }
-@keyframes hide-guide { 0%, 34% { opacity: 1; } 45%, 100% { opacity: 0; } }
+/* Alternate names replay the field effect without remounting its real input. */
+@keyframes input-reveal-a { 0%, 29%, 95%, 100% { opacity: 1; } 34%, 80% { opacity: 0; } }
+@keyframes input-reveal-b { 0%, 29%, 95%, 100% { opacity: 1; } 34%, 80% { opacity: 0; } }
+@keyframes split-input-left {
+  0%, 28%, 96%, 100% { opacity: 0; transform: translate(0, 0); }
+  33% { opacity: 1; transform: translate(0, 0); }
+  48%, 74% { opacity: 1; transform: translate(-12px, 4px) rotate(-2deg); }
+  85% { opacity: 0; transform: translate(-16px, 7px) rotate(-3deg); }
+}
+@keyframes split-input-right {
+  0%, 28%, 96%, 100% { opacity: 0; transform: translate(0, 0); }
+  33% { opacity: 1; transform: translate(0, 0); }
+  48%, 74% { opacity: 1; transform: translate(12px, 4px) rotate(2deg); }
+  85% { opacity: 0; transform: translate(16px, 7px) rotate(3deg); }
+}
+@keyframes input-cut-mark { 0%, 28%, 65%, 100% { opacity: 0; } 33%, 42% { opacity: 1; } }
 
 @media (min-width: 1000px) {
   .heading-doodle { display: block; }
@@ -158,14 +186,13 @@ input[readonly] { background: #f4f7fa; }
   .window-bar { min-height: 40px; padding-inline: 12px; border-radius: 12px 12px 0 0; gap: 6px; }
   .window-dots { gap: 4px; }
   .window-dots i { width: 8px; height: 8px; }
-  .window-title { font-size: 9px; gap: 5px; }
-  .window-title svg { width: 13px; height: 13px; }
   .window-star svg { width: 16px; height: 16px; }
   .window-body { padding: 15px 20px 19px; }
-  .scene-frame { margin: 0 -10px 19px; }
+  .scene-frame { margin: 0 -5px 10px; }
+  .scene-field { left: 6px; width: calc(100% - 12px); }
   .scene-caption { display: none; }
-  .cutting-scene { max-height: 230px; }
-  .form-row { flex-direction: column; gap: 12px; }
+  .scene-edge-decoration { display: none; }
+  .scene-heart { transform: translateX(40px); }
   label { font-size: 12px; }
   .primary-button { width: 100%; min-height: 54px; }
   .studio-note { margin-top: 20px; font-size: 10px; gap: 6px; }
@@ -186,4 +213,14 @@ input[readonly] { background: #f4f7fa; }
 }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation: none !important; transition: none !important; }
+}
+
+/* Native cursors stay in sync with the mouse without animation or JS tracking.
+   The hotspot is the upper-left blade tip; touch devices keep normal behavior. */
+@media (hover: hover) and (pointer: fine) {
+  body { cursor: url('/scissors-cursor.svg') 2 0, auto; }
+  a, button, label, summary { cursor: url('/scissors-cursor.svg') 2 0, pointer; }
+  input, textarea, [contenteditable="true"] { cursor: text; }
+  button:disabled { cursor: wait; }
+  .clear-button:disabled { cursor: url('/scissors-cursor.svg') 2 0, default; }
 }

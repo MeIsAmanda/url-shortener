@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App.jsx';
 
@@ -10,7 +10,7 @@ const success = () => ({ ok: true, status: 201, json: async () => ({ originalUrl
 function setup() {
   const user = userEvent.setup();
   render(<App />);
-  return { user, input: screen.getByRole('textbox', { name: 'Your long URL' }), submit: screen.getByRole('button', { name: 'Snip my link' }) };
+  return { user, input: screen.getByRole('textbox', { name: 'Put your long URL here!' }), submit: screen.getByRole('button', { name: 'Snip my link' }) };
 }
 
 beforeEach(() => vi.stubGlobal('fetch', vi.fn()));
@@ -31,9 +31,22 @@ describe('the shortening journey', () => {
 
   it('provides a compact labelled tool without the old instructional section', () => {
     setup();
+    expect(screen.getByRole('link', { name: 'Sniply home' })).toHaveTextContent('sniply.');
     expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Long link? Snip, snip.');
     expect(screen.queryByRole('link', { name: /How it works/ })).not.toBeInTheDocument();
     expect(screen.queryByRole('heading', { name: 'Three steps. One small link.' })).not.toBeInTheDocument();
+    expect(screen.queryByText('the little link studio')).not.toBeInTheDocument();
+    expect(screen.getAllByRole('textbox')).toHaveLength(1);
+  });
+
+  it('keeps the real input mounted with its value and focus after Enter submission', async () => {
+    fetch.mockResolvedValue(success());
+    const { user, input } = setup();
+    await user.type(input, `${originalUrl}{Enter}`);
+    await screen.findByRole('link', { name: 'Open link' });
+    expect(screen.getByRole('textbox', { name: 'Put your long URL here!' })).toBe(input);
+    expect(input).toHaveFocus();
+    expect(input).toHaveValue(originalUrl);
   });
 
   it('submits blank input without destination validation', async () => {
@@ -61,7 +74,7 @@ describe('the shortening journey', () => {
     const open = await screen.findByRole('link', { name: 'Open link' });
     expect(open).toHaveAttribute('href', shortUrl);
     expect(open).toHaveAttribute('rel', 'noopener noreferrer');
-    expect(screen.getByText(originalUrl)).toBeInTheDocument();
+    expect(within(screen.getByRole('region', { name: 'Freshly snipped!' })).getByText(originalUrl)).toBeInTheDocument();
     expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({ originalUrl });
   });
 

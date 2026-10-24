@@ -118,7 +118,11 @@ Configure H2 connections with `SET WRITE_DELAY 0` so committed writes do not ret
 
 Use one compact, whimsical scissors-themed page inspired by Amanda's reference: soft blue browser chrome, cream background, rounded type, an original character holding oversized scissors, and small decorative icons. Keep copy brief and omit the previous explanatory paragraphs and three-step section. Include a labelled input, clear action, **Snip my link** button, request/error feedback, and a compact result with Copy, Open, and expandable Original link actions.
 
+Use **Sniply** branding. Label the input **Put your long URL here!** with a decorative curly arrow pointing down to the field. Keep confetti below the input, including during the cutting animation, and keep the character's shirt plain.
+
 On every submission, replay a finite SVG/CSS cutting animation independently of the network request. Use transforms and opacity for scene motion; never wait for the animation before sending the request or displaying its response. Do not loop the scene while idle. Respect reduced-motion preferences by disabling decorative animation. Keep artwork and controls responsive, with no animation-library dependency.
+
+Place the real editable URL field at the scissors' cutting point instead of a simulated URL graphic. Remove the "little link studio" window caption. Animate the character lifting the scissors to cut the entered field, then show the real generated link below. Keep a single native input mounted throughout submission, preserve its value/focus, and immediately restore the field appearance if the user resumes editing during the effect. Any temporary visual halves must be non-interactive and hidden from screen readers.
 
 - Disable duplicate submissions while a request is pending.
 - Preserve the user's input after errors and allow retry.

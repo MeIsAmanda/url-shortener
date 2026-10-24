@@ -5,36 +5,25 @@ function CuttingScene({ active }) {
     <svg
       className={`cutting-scene${active ? ' is-snipping' : ''}`}
       data-testid="cutting-scene"
-      viewBox="0 0 680 330"
+      viewBox="0 0 680 410"
       fill="none"
       aria-hidden="true"
       focusable="false"
     >
       <g stroke="#304057" strokeWidth="2.5" strokeLinejoin="round" strokeLinecap="round">
-        <path d="M92 180c-12-2-17-16-10-24 4-5 11-7 17-3 1-11 14-16 23-9 6 4 7 11 5 17 15-3 24 16 12 24H93" fill="#eaf4fc" />
-        <path d="m548 197 5-15 7 14 16 1-12 10 4 16-14-8-14 8 3-16-12-10 17-1Z" fill="#ffe28a" />
-        <path d="M155 244c-22-12-28-23-20-31 5-6 14-4 19 3 5-8 14-10 20-4 10 10-2 24-19 32Z" fill="#f7b8cd" />
-        <path d="m575 63 4 9m15 2-9 4m-2-25-4 7" stroke="#8ca3c1" />
-        <path d="m105 81 4 9m-14 5 9-1m6-23 5 6" stroke="#8ca3c1" />
-        <path d="m219 26 4-10 4 10 10 4-10 4-4 10-4-10-10-4 10-4Z" fill="#ffe28a" stroke="#b48b35" strokeWidth="1.5" />
+        <path className="scene-edge-decoration" d="M92 180c-12-2-17-16-10-24 4-5 11-7 17-3 1-11 14-16 23-9 6 4 7 11 5 17 15-3 24 16 12 24H93" fill="#eaf4fc" />
+        <path className="scene-edge-decoration" d="m548 197 5-15 7 14 16 1-12 10 4 16-14-8-14 8 3-16-12-10 17-1Z" fill="#ffe28a" />
+        <path className="scene-heart" d="M155 244c-22-12-28-23-20-31 5-6 14-4 19 3 5-8 14-10 20-4 10 10-2 24-19 32Z" fill="#f7b8cd" />
+        <g className="scene-confetti" transform="translate(0 110)">
+          <path d="m575 63 4 9m15 2-9 4m-2-25-4 7" stroke="#8ca3c1" />
+          <path d="m105 81 4 9m-14 5 9-1m6-23 5 6" stroke="#8ca3c1" />
+          <path d="m219 26 4-10 4 10 10 4-10 4-4 10-4-10-10-4 10-4Z" fill="#ffe28a" stroke="#b48b35" strokeWidth="1.5" />
+        </g>
         <circle cx="478" cy="250" r="5" fill="#c5d8fb" stroke="none" />
         <circle cx="194" cy="172" r="3.5" fill="#f2b8cb" stroke="none" />
 
-        <g className="ribbon-piece ribbon-piece--left">
-          <path d="M73 68a22 22 0 0 1 22-22h238v51H95a22 22 0 0 1-22-22v-7Z" fill="#dbe4e9" stroke="none" transform="translate(0 5)" />
-          <path d="M73 68a22 22 0 0 1 22-22h238v51H95a22 22 0 0 1-22-22v-7Z" fill="#fffef9" />
-          <circle cx="97" cy="71" r="4" fill="#f7b8cd" stroke="none" />
-          <text x="113" y="77" fill="#68768b" stroke="none" fontSize="15" fontFamily="'DM Sans', sans-serif">https://a-very-long-link</text>
-        </g>
-        <g className="ribbon-piece ribbon-piece--right">
-          <path d="M347 46h238a22 22 0 0 1 22 22v7a22 22 0 0 1-22 22H347V46Z" fill="#dbe4e9" stroke="none" transform="translate(0 5)" />
-          <path d="M347 46h238a22 22 0 0 1 22 22v7a22 22 0 0 1-22 22H347V46Z" fill="#fffef9" />
-          <text x="364" y="77" fill="#68768b" stroke="none" fontSize="15" fontFamily="'DM Sans', sans-serif">.com/your-next-big-idea</text>
-          <path d="M333 46h14v51h-14" fill="#fffef9" stroke="none" />
-        </g>
-        <path className="cut-guide" d="M340 43v58" stroke="#b9c6d4" strokeDasharray="3 6" strokeWidth="1.5" />
-
-        <ellipse cx="340" cy="319" rx="43" ry="5" fill="#d6e5eb" stroke="none" />
+        <ellipse cx="340" cy="395" rx="43" ry="5" fill="#d6e5eb" stroke="none" />
+        <g className="cutter">
         <g className="little-helper">
           <path d="m331 256-5 28-15 25 9 5 21-27 6-26" fill="#304057" />
           <path d="m346 257 9 28 1 27 11-1 3-30-10-27" fill="#304057" />
@@ -51,7 +40,6 @@ function CuttingScene({ active }) {
           <ellipse cx="329" cy="203" rx="3" ry="1.8" fill="#ec9c9d" stroke="none" />
           <ellipse cx="348" cy="203" rx="3" ry="1.8" fill="#ec9c9d" stroke="none" />
           <path d="m295 175-2-10c-1-5 5-7 7-2l3 10m72 1 3-11c1-4 7-3 6 2l-1 10" fill="#f6c7a7" />
-          <path d="m330 240 5 3m15 1 3-3" stroke="#689bc1" strokeWidth="1.5" />
         </g>
 
         <g className="scissor-blade scissor-blade--left">
@@ -72,8 +60,9 @@ function CuttingScene({ active }) {
         <circle cx="340" cy="102" r="1.5" fill="#304057" stroke="none" />
 
         <g className="snip-sparks" stroke="#c78b27" strokeWidth="2.5">
-          <path d="m323 58-10-6m44 6 10-6m-27-9V32" />
-          <path d="m322 80-10 4m46-4 10 4" />
+          <path d="m288 171-10-6m114 6 10-6" />
+          <path d="m287 193-10 4m116-4 10 4" />
+        </g>
         </g>
       </g>
     </svg>

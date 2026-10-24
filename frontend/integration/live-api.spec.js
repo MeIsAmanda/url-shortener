@@ -11,11 +11,26 @@ test('creates, copies, and resolves a real saved link', async ({ page, context }
   }
 
   const originalUrl = 'https://example.com/a-long-path-for-the-live-frontend-check?campaign=assessment&x=1#section';
-  await page.getByRole('textbox', { name: 'Your long URL' }).fill(originalUrl);
+  await page.getByRole('textbox', { name: 'Put your long URL here!' }).fill(originalUrl);
   await page.getByRole('button', { name: 'Snip my link' }).click();
   const open = page.getByRole('link', { name: 'Open link' });
   await expect(open).toBeVisible();
   const shortUrl = await open.getAttribute('href');
+
+  if (process.env.CAPTURE_SCREENSHOTS) {
+    // A deterministic mid-cut preview of the real field; normal test runs do
+    // not pause or otherwise change the animation.
+    await page.locator('.scene-frame').evaluate((frame) => {
+      for (const animation of frame.getAnimations({ subtree: true })) {
+        animation.pause();
+        animation.currentTime = 550;
+      }
+    });
+    await page.screenshot({ path: path.resolve('../docs/screenshots/input-cutting-desktop.png'), fullPage: true });
+    await page.locator('.scene-frame').evaluate((frame) => {
+      for (const animation of frame.getAnimations({ subtree: true })) animation.finish();
+    });
+  }
 
   await page.getByRole('button', { name: 'Copy link' }).click();
   await expect(page.getByRole('button', { name: 'Copied!' })).toBeVisible();
@@ -35,7 +50,7 @@ test('creates, copies, and resolves a real saved link', async ({ page, context }
 
 test('saves a short destination even when the generated link is longer', async ({ page }) => {
   await page.goto('/');
-  const input = page.getByRole('textbox', { name: 'Your long URL' });
+  const input = page.getByRole('textbox', { name: 'Put your long URL here!' });
   await input.fill('https://x.co');
   await page.getByRole('button', { name: 'Snip my link' }).click();
   const open = page.getByRole('link', { name: 'Open link' });

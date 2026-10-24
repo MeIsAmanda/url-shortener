@@ -14,6 +14,15 @@ The current Maven `verify` run passed with 56 backend checks and no failures or 
 
 `mvn test` runs the first 55 checks. `mvn verify` also builds the executable JAR and runs the restart integration check. GitHub's existing backend workflow invokes `verify`, so it includes that check automatically on the next hosted run.
 
+## Real-input scissors interaction — 24 October 2026
+
+Removed the window caption and the sample URL graphic. The actual native text field is now positioned at the scissors' cutting point. The character rises to snip the entered box; temporary clipped visual halves show the submitted text while the real field keeps its DOM identity, value, and focus. Editing cancels the field effect immediately. Results remain independent of animation completion, and reduced motion disables the effect.
+
+- Component/API-client tests: 29 passed (12 component and 17 API-client cases).
+- Browser checks: 11 passed across phone, tablet, desktop, and landscape viewports, including direct field clicks, persistent input identity/focus, editing during animation, replay, and reduced motion.
+- Frontend build and both real-backend browser checks passed using an isolated in-memory database. No backend source or development database was changed.
+- Refreshed desktop/mobile screenshots and captured `screenshots/input-cutting-desktop.png` at a controlled mid-cut frame for visual inspection. Mobile edge decorations were adjusted to avoid clipped shapes.
+
 ## Whimsical scissors UI — 24 October 2026
 
 Replaced the descriptive landing page and three-step section with a compact, icon-rich tool inspired by Amanda's scissors reference. The illustration is original SVG code, with soft blue browser chrome, cream background, rounded type, and a character holding oversized scissors. No new dependencies or backend changes were introduced.
@@ -73,6 +82,17 @@ Verified locally with Node 20.19.5, React 19.3.1, Vite 8.3.5, Vitest 4.1.12, Pla
 These are assistant-run checks. Amanda has not yet reviewed the test implementation. See `testing.md` for review order, commands, and limitations.
 
 The user reports backend verification complete. The assistant did not repeat a process-restart disk-persistence check during the frontend milestone; the live browser checks used an isolated in-memory database.
+
+## Sniply visual update — 24 October 2026
+
+Renamed the page and browser metadata to Sniply. The input is labelled **Put your long URL here!** with a decorative curly arrow; confetti and cutting sparks sit below the field, and the character's shirt marks were removed.
+
+- Frontend tests: 29 passed; production build passed.
+- Isolated Chrome browser tests: 11 passed, including six viewport sizes from 320px wide through desktop and landscape. These also check the Sniply title and that confetti is below the input.
+- Live Chrome browser tests: 2 passed using the packaged backend on port 8081 and a temporary in-memory database. Creation, clipboard contents, and the exact redirect Location passed; redirects were not followed externally.
+- Refreshed and visually inspected the desktop, mobile, and mid-cut screenshots in `docs/screenshots/`.
+
+These are assistant-run functional and visual checks; they do not measure animation frame rate or replace Amanda's review. The backend source was unchanged and its full test suite was not rerun for this visual update.
 
 ## Not yet verified
 

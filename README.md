@@ -1,6 +1,6 @@
-# URL shortener assessment
+# Sniply — URL shortener assessment
 
-A Spring Boot and React URL shortener for a full stack engineering assessment.
+Sniply is a Spring Boot and React URL shortener for a full stack engineering assessment.
 
 ## Current milestone
 
@@ -44,7 +44,7 @@ npm run dev
 
 Open http://localhost:5173. Paste your destination, click **Snip my link** (or press Enter), then copy or open the result. Both terminals must remain running. Use Ctrl+C in each terminal to stop them.
 
-The compact scissors-themed interface uses an original SVG illustration and a short cutting animation on submission. Results appear as soon as the API responds; animation never adds a waiting period. Reduced-motion preferences disable decorative animation. The result's **Original link** disclosure shows the saved destination, and **Clear URL** resets the form and result.
+The real editable URL field sits above the scissors. On submission, the character lifts the scissors and the field briefly splits around the submitted text; the generated link appears below as soon as the API responds. The field keeps its value and focus, and editing immediately restores its normal appearance. Reduced-motion preferences disable decorative animation. The result's **Original link** disclosure shows the saved destination, and **Clear URL** resets the form and result.
 
 Vite forwards `/api` and `/s/` requests to `http://127.0.0.1:8080`, so local development needs no broad CORS configuration. If your backend uses another port, set `BACKEND_PROXY_TARGET` before starting Vite, for example `$env:BACKEND_PROXY_TARGET = 'http://127.0.0.1:8081'` in PowerShell.
 
@@ -126,7 +126,7 @@ The workflow is already defined in [.github/workflows/checks.yml](.github/workfl
 After the source is pushed, the workflow runs on pushes and pull requests, and supports a manual run from the Actions tab:
 
 - **Backend tests and build:** Java 25, Maven tests, packaging, and the packaged-application restart check (`verify`).
-- **Frontend tests and build:** Node 24, locked dependency installation, component/API-client tests, build, and ten Chromium browser checks, including animation/reduced-motion behavior.
+- **Frontend tests and build:** Node 24, locked dependency installation, component/API-client tests, build, and eleven Chromium browser checks, including live-field interaction and animation/reduced-motion behavior.
 
 You do not need to recreate the workflow through GitHub's website. If Actions is disabled by repository or organisation policy, enable or request access there. Requiring the two checks before merging is a separate branch-rules setting you can configure on GitHub after the checks have run. No secrets or deployment credentials are needed for this workflow.
 
