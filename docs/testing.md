@@ -1,0 +1,87 @@
+# Test review guide
+
+These tests were written and executed by the assistant. Amanda's review is still pending. Treat this guide as a starting point for understanding and challenging the tests, not a sign-off.
+
+## Suggested review order
+
+1. Read `frontend/src/App.jsx` alongside `frontend/src/App.test.jsx`: each test acts like a user interacting with the form.
+2. Read `frontend/src/api.js` alongside `frontend/src/api.test.js`: these cover the HTTP boundary and failure messages.
+3. Read `frontend/browser/shortening.spec.js`: these run in a real browser but deliberately stub the API.
+4. Read `frontend/integration/live-api.spec.js`: these use a running real backend and check an actual saved mapping.
+5. Review the existing backend tests: `UrlValidatorTest`, `ShortLinkServiceTest`, and `ShortLinkApiTest` under `backend/src/test/java/com/amanda/urlshortener/link/`.
+
+In Vitest tests, `expect` checks an outcome, `vi.fn()` creates a controllable substitute, and `mockResolvedValue` supplies a fake asynchronous response. React Testing Library queries elements by their accessible role and name; `userEvent` simulates interactions. In Playwright, `page.route` replaces the API only in the isolated browser suite. The live suite has no API interception.
+
+## Frontend suites
+
+| File | Cases | What it checks |
+| --- | ---: | --- |
+| `src/App.test.jsx` | 10 | Landing content, labels/navigation, blank and missing-scheme feedback, Enter submission, pending/duplicate handling, backend validation and correction, network retry, stale-result removal, copy success, and clipboard failure |
+| `src/api.test.js` | 18 | Quick input feedback, exact request content, backend validation messages, non-JSON errors, rate-limit feedback, generic server errors, network/timeout failures, and malformed/unsafe success payloads |
+| `browser/shortening.spec.js` | 6 | Result rendering and long-URL wrapping at 360/390/768/1280px, keyboard entry/focus, and clipboard denial in a real browser with a stubbed API |
+| `integration/live-api.spec.js` | 2 | Real API creation, strictly shorter output, actual clipboard contents, saved-code lookup and exact 302 Location, plus a real too-short validation error |
+
+The frontend only checks blank input and the scheme for immediate feedback. Detailed URL validation stays in the backend. The API client also validates returned links before rendering them as clickable URLs.
+
+## Commands
+
+From `frontend/`, after `npm ci`:
+
+```powershell
+npm test
+npm run test:watch
+npm run build
+npx playwright install chromium
+npm run test:browser
+```
+
+The watch command stays running; exit it before continuing in the same terminal. The other commands finish. For Linux browser setup, use `npx playwright install --with-deps chromium` if OS libraries are missing. CI performs that installation automatically.
+
+Alternatively, use an installed Chrome with `$env:PLAYWRIGHT_CHANNEL = 'chrome'` in PowerShell; the tests then use that browser instead of downloaded Chromium.
+
+The browser commands start and stop their own Vite preview on port 4173. Build first, because they exercise `dist/`. The default backend proxy target is port 8080. An existing preview server can be reused locally; make sure it has the intended proxy configuration.
+
+## Optional live check
+
+This suite creates a mapping. Use an isolated backend database so it doesn't add test links to your development data. Example PowerShell terminal one, from `backend/` after `mvnw.cmd verify`:
+
+```powershell
+$env:PORT = '8081'
+$env:PUBLIC_BASE_URL = 'http://127.0.0.1:4173'
+$env:DATABASE_URL = 'jdbc:h2:mem:frontend-check;DB_CLOSE_DELAY=-1'
+java -jar target/url-shortener-0.0.1-SNAPSHOT.jar
+```
+
+Terminal two, from `frontend/`:
+
+```powershell
+$env:BACKEND_PROXY_TARGET = 'http://127.0.0.1:8081'
+npm run build
+npm run test:live
+```
+
+To refresh the documentation screenshots during that check, also set `$env:CAPTURE_SCREENSHOTS = '1'`. This writes `docs/screenshots/landing-desktop.png` and `docs/screenshots/result-mobile.png`. The screenshots show a real locally generated link, not a deployed service.
+
+The test requests the short-code route through the local proxy with `maxRedirects: 0`. It asserts the 302 response and original destination, including query and fragment, without visiting the external website. Stop the isolated backend with Ctrl+C when finished. Environment variables apply to the current shell; open fresh terminals for normal development or remove the test-specific overrides.
+
+## What passing results do not prove
+
+- The mocked suites do not prove real persistence or backend integration.
+- The live suite checks an actual mapping but does not restart the backend to test disk persistence.
+- Chromium viewport checks do not replace an actual phone, mobile Safari, on-screen keyboard, browser zoom, screen-reader, or visual contrast review.
+- Error-path tests are functional checks; no security scan or performance test has been performed.
+- Local workflow-equivalent commands do not establish that GitHub Actions has run. Confirm that after pushing.
+
+## Manual review checklist
+
+- [ ] Read the assertions and confirm they represent the requirements.
+- [ ] Run component tests in watch mode and inspect at least one failure by temporarily changing expected behavior, then restore it.
+- [ ] Try a valid long destination, an invalid URL, a short URL, and a stopped backend.
+- [ ] Copy and open a generated link; confirm the destination is preserved.
+- [ ] Try keyboard-only use and an actual phone in portrait and landscape.
+- [ ] Check browser zoom and long-URL wrapping.
+- [ ] Run the prepared GitHub checks after pushing and inspect their logs.
+
+## Workflow references
+
+The workflow uses the documented [checkout action](https://github.com/actions/checkout), [Java setup action](https://github.com/actions/setup-java), and [Node setup action](https://github.com/actions/setup-node). Vite documents [development proxy behavior](https://vite.dev/config/server-options#server-proxy) and [preview proxy behavior](https://vite.dev/config/preview-options.html#preview-proxy). The checked-in workflow runs backend and isolated frontend suites; the live suite remains an explicit local check.
