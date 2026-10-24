@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { createLink } from './api.js';
+import { completeProtocol, validateDestination } from './urlValidation.js';
 import CuttingScene from './CuttingScene.jsx';
 import SnipInput from './SnipInput.jsx';
 import Icon from './Icons.jsx';
@@ -22,14 +23,22 @@ export default function App() {
     setCopyState('idle');
     resultVersion.current += 1;
     setError(null);
+    const destination = completeProtocol(input);
+    if (destination !== input) setInput(destination);
+    const validationError = validateDestination(destination);
+    if (validationError) {
+      setError({ message: validationError, field: true });
+      inputRef.current.focus();
+      return;
+    }
     setPending(true);
     setSnipCount((count) => count + 1);
     submitting.current = true;
     // The illustration runs independently: never delay the API or its result.
     try {
-      setResult(await createLink(input));
+      setResult(await createLink(destination));
     } catch (failure) {
-      setError({ message: failure.message });
+      setError({ message: failure.message, field: failure.fieldError });
       inputRef.current.focus();
     } finally {
       submitting.current = false;
@@ -59,6 +68,12 @@ export default function App() {
   function clearInput() {
     updateInput('');
     inputRef.current.focus();
+  }
+
+  function completeInputProtocol() {
+    if (pending) return;
+    const completed = completeProtocol(input);
+    if (completed !== input) updateInput(completed);
   }
 
   return (
@@ -99,6 +114,7 @@ export default function App() {
                   error={error}
                   run={snipCount}
                   onChange={updateInput}
+                  onBlur={completeInputProtocol}
                   onClear={clearInput}
                 />
                 <span className="scene-caption" aria-hidden="true">{pending ? 'snip in progress…' : 'a small snip of happiness'}</span>
@@ -110,7 +126,7 @@ export default function App() {
                   <Icon name="sparkles" />
                 </button>
               </div>
-              <p id="url-hint" className="sr-only">Your destination is saved exactly as entered.</p>
+              <p id="url-hint" className="sr-only">HTTPS is added as you type or paste a bare domain, or when you leave the field or submit. Use a recognized domain. Maximum 2,048 characters including the protocol. Encode spaces and special characters.</p>
               {error && <p id="form-error" className="form-error" role="alert"><Icon name="cloud" />{error.message}</p>}
               <p className="sr-only" role="status">{pending ? 'Creating your short link.' : ''}</p>
             </form>

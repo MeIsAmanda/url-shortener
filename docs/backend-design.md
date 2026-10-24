@@ -4,12 +4,15 @@ This revision replaces the random code generator with a database sequence and a 
 
 ## Current destination policy
 
-At Amanda's request, destination validation, trimming, and strict output-length comparison have been removed. Store submitted strings unchanged and assume validity. Website existence was never checked. The service can create a generated URL longer than its input. An unusable destination can still fail when a redirect is attempted. Flyway V3 widens original_url to CLOB to remove the old 4096-character cap.
+As of 25 October 2026, new destinations require HTTP(S), valid domain labels and a recognized IANA TLD, correctly encoded URL characters, and a maximum of 2,048 characters. Validation runs before ID allocation. Accepted values are stored unchanged; no trimming, normalization, DNS lookup, or website-existence check occurs. The service can still generate output longer than the input. See [url-validation.md](url-validation.md) for the full policy and limitations. This supersedes the earlier accept-any-string policy.
+
+The web form visibly completes a missing protocol as https:// during bare-hostname keyboard entry/paste, with blur/submit as a fallback before calling the API. The backend remains strict: it validates the complete URL supplied by its caller and stores it unchanged. The prefix counts toward the maximum length.
 
 ## Creation flow
 
 ```text
 Controller
+  → UrlValidator.validate(originalUrl)
   → LinkIdAllocator.nextId()
   → Base62Encoder.encode(id)
   → construct complete public URL
@@ -18,6 +21,8 @@ Controller
 ```
 
 The allocated ID is the new row's primary key. No random generator, existence query, or collision retry is needed in the normal creation path. The primary key and code unique constraint still reject integrity violations; the service does not hide them or claim success before persistence.
+
+Allocation reserves a number, not an empty row. `DatabaseLinkIdAllocator` obtains the next sequence value, and `saveAndFlush` inserts the mapping afterward. A failed insert can leave a skipped number without leaving a saved mapping. It may still incur database/log work; gaps do not mean that blank link rows accumulate.
 
 Examples with the fixed alphabet `0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz`:
 
@@ -38,7 +43,8 @@ Codes grow as numbers grow, up to 11 characters for a positive Java long. There 
 - `LinkIdAllocator`: interface separating the service from the ID source.
 - `DatabaseLinkIdAllocator`: asks H2 for `NEXT VALUE FOR short_link_id_seq`; it has no local counter and never computes `MAX(id) + 1` during requests.
 - `Base62Encoder`: converts an integer to a compact string without truncation, hashing, randomness, or database access.
-- `ShortLinkService`: allocation, encoding, verbatim persistence, and lookup.
+- `UrlValidator`: creation-time format, length, and bundled-TLD checks without contacting the destination.
+- `ShortLinkService`: validation, allocation, encoding, verbatim persistence of accepted values, and lookup.
 - `ShortLink`: assigned primary key, unique code, original destination, and timestamp. `Persistable.isNew()` tells Spring Data to insert a newly constructed entity even though its ID is already present. Lifecycle callbacks mark persisted/loaded objects as existing.
 - `ShortLinkRepository`: save and exact-code lookup.
 - Flyway migrations: initialize/upgrade H2 once; Hibernate uses `ddl-auto=validate`.
@@ -46,6 +52,10 @@ Codes grow as numbers grow, up to 11 characters for a positive Java long. There 
 The ID-source interface is an in-process boundary. It does not introduce another network service or prove horizontal scalability. Embedded H2 remains a single-instance local choice.
 
 ## Persistence, gaps, and failures
+
+H2 is the embedded relational database used by this project. The default `jdbc:h2:file:./data/shortener` stores data in `backend/data/shortener.mv.db` when the backend is launched from `backend/`. Restarting from the same directory with the same database URL preserves mappings, schema history, and sequence state. A `jdbc:h2:mem:...` URL instead uses temporary in-memory storage, as in API/live-browser tests.
+
+For a local backup, stop the backend and copy the whole `backend/data/` directory to a separate location. Restore that stopped database together with a compatible application version; do not combine mappings from one backup with allocator state from another. These local data files are ignored by Git, so committing the source does not back up saved links. A custom `DATABASE_URL` may store data elsewhere.
 
 H2 sequence values are not returned after rollback. An insert failure can consume an ID without creating a row. Gaps are intentional. The sequence does not cycle: exhaustion causes failure, not reuse. [H2 sequence commands](https://www.h2database.com/html/commands.html#create_sequence), [sequence expression semantics](https://www.h2database.com/html/grammar.html#sequence_value_expression).
 
@@ -57,7 +67,7 @@ Spring Data's normal new-entity detection treats non-null IDs as existing withou
 
 ## Existing database compatibility
 
-V3 runs after the ID migration described below and widens only the destination column. Existing destinations are retained, with no trimming or reallocation.
+V1, V2, and V3 are ordered schema revisions applied to the same database, not separate database servers. V3 runs after the ID migration described below and widens only the destination column. Existing destinations are retained, with no trimming or reallocation.
 
 The old backend used independent identity primary keys and random seven-character public codes. Simply restarting a new sequence at 1 would eventually risk colliding with an old public alias or existing row ID.
 

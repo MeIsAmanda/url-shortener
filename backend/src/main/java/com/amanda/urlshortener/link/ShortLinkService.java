@@ -29,6 +29,7 @@ public class ShortLinkService {
     }
 
     public CreateLinkResponse create(String input) {
+        UrlValidator.validate(input);
         long id = idAllocator.nextId();
         String code = encoder.encode(id);
         String shortened = publicBaseUrl + "/s/" + code;

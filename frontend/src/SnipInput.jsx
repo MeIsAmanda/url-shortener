@@ -1,11 +1,21 @@
-import { useState } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import Icon from './Icons.jsx';
+import { completeProtocolWhileTyping } from './urlValidation.js';
 
 const PLACEHOLDER = 'Pop your link in here…';
 
-export default function SnipInput({ inputRef, value, pending, error, run, onChange, onClear }) {
+export default function SnipInput({ inputRef, value, pending, error, run, onChange, onBlur, onClear }) {
   const [cancelledRun, setCancelledRun] = useState(0);
+  const selectionAfterCompletion = useRef(null);
   const cutting = run > 0 && run !== cancelledRun && !error;
+
+  useLayoutEffect(() => {
+    const selection = selectionAfterCompletion.current;
+    selectionAfterCompletion.current = null;
+    if (selection && document.activeElement === inputRef.current) {
+      inputRef.current.setSelectionRange(selection.start, selection.end, selection.direction);
+    }
+  }, [value, inputRef]);
 
   function restoreInput() {
     setCancelledRun(run);
@@ -13,7 +23,23 @@ export default function SnipInput({ inputRef, value, pending, error, run, onChan
 
   function changeInput(event) {
     restoreInput();
-    onChange(event.target.value);
+    selectionAfterCompletion.current = null;
+    const field = event.target;
+    const raw = field.value;
+    const editing = event.nativeEvent.isComposing || event.nativeEvent.inputType?.startsWith('delete');
+    // Leave room to type "http://" in front of an existing bare hostname.
+    const firstDot = raw.indexOf('.');
+    const editingBeforeDomainDot = firstDot >= 0 && field.selectionStart <= firstDot;
+    const completed = editing || editingBeforeDomainDot ? raw : completeProtocolWhileTyping(raw);
+    if (completed !== raw) {
+      const addedLength = completed.length - raw.length;
+      selectionAfterCompletion.current = {
+        start: field.selectionStart + addedLength,
+        end: field.selectionEnd + addedLength,
+        direction: field.selectionDirection,
+      };
+    }
+    onChange(completed);
   }
 
   return (
@@ -42,8 +68,11 @@ export default function SnipInput({ inputRef, value, pending, error, run, onChan
             spellCheck="false"
             value={value}
             onChange={changeInput}
+            onCompositionEnd={changeInput}
+            onBlur={onBlur}
             readOnly={pending}
             placeholder={PLACEHOLDER}
+            aria-invalid={error?.field || undefined}
             aria-describedby={error ? 'url-hint form-error' : 'url-hint'}
           />
           <button className="clear-button" type="button" aria-label="Clear URL" onClick={onClear} disabled={pending || !value}><Icon name="close" /></button>

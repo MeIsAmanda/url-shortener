@@ -1,10 +1,42 @@
 # Project verification
 
-Verified on 24 October 2026 with Java 25 and Spring Boot 4.1.2.
+The latest URL-validation checks were run on 25 October 2026 with Java 25/Spring Boot 4.1.2, Node 20.19.5, and installed headless Chrome. Earlier milestones retain their original results and policies. No hosted GitHub CI result is claimed.
 
-## Automated tests
+## Latest recorded results
 
-The current Maven `verify` run passed with 56 backend checks and no failures or errors: 55 Surefire tests, followed by one packaged-application restart integration test through Failsafe.
+| Check | Result | Boundary |
+| --- | --- | --- |
+| Backend Maven verify | 123 passed: 122 validator/unit/API/migration cases plus 1 packaged restart check | Isolated databases; executable JAR built |
+| Frontend tests | 112 passed: 15 component, 21 client, 76 URL-policy cases | Includes visible protocol completion, shared Java/JS fixtures, and identical TLD snapshot check |
+| Frontend production build | Passed | Includes offline IANA snapshot |
+| Isolated Chrome browser suite | 22 passed | Six viewport sizes, visible protocol completion, validation/correction without requests, interaction, clipboard, and reduced motion |
+| Live Chrome browser suite | 3 passed | Real API/clipboard/redirect, validation correction, exact accepted encoding, and direct invalid API request |
+
+New creation validates HTTP(S), domain/TLD format, encoded characters, no raw whitespace, and at most 2,048 characters, before ID allocation. Invalid input returns 400 INVALID_URL; accepted URLs remain unchanged. The tests also verify missing/null input, control characters, malformed escapes, invalid Punycode, exact boundary behavior, and redirects for older over-limit mappings. The TLD snapshot is bundled; no DNS or destination HTTP request is made. See [url-validation.md](url-validation.md).
+
+The first protocol-completion follow-up added https:// on blur/submit and passed the frontend and three live checks, with refreshed screenshots. The keyboard-entry follow-up now completes a bare hostname immediately once its first dot is typed or pasted. The latest frontend tests/build and 22 browser checks passed, including caret placement, deletion, editing in the middle after an equivalent bare-address replacement, and manual HTTP(S) entry. A component test checks composition completion. Blur/submit remain fallbacks. The backend source/contract is unchanged; the backend and live suites were not rerun for this keyboard-only follow-up. Actual-device keyboard/IME review remains manual.
+
+The live checks used the packaged backend on port 8081 with a temporary in-memory database and disabled external redirect following. Desktop, mid-cut, mobile-result, and mobile-validation screenshots were refreshed. The standalone packaged restart test separately checked file persistence. These are assistant-run checks; actual-phone review, security scans, performance measurements, and hosted CI confirmation remain outstanding.
+
+## Previous results — before the URL-validation update
+
+| Check | Last recorded result | Boundary |
+| --- | --- | --- |
+| Backend Maven verify | 55 unit/API/migration cases and 1 packaged restart check passed | Isolated test databases; not rerun during the latest visual or documentation changes |
+| Frontend component/API-client tests | 29 passed | 12 component and 17 client cases |
+| Frontend production build | Passed | Rebuilt for the pixel cursor; later transparent-handle edit received an SVG syntax/color check |
+| Isolated Chrome browser suite | 11 passed | Stubbed API; six viewport sizes, keyboard, clipboard, cutting interaction, reduced motion, branding, and confetti placement |
+| Live Chrome browser suite | 2 passed | Temporary backend database, real clipboard and exact 302 Location; no external redirect following |
+
+These historical results are from the Sniply visual update below and describe the earlier accept-any-string policy. The current validation policy and counts are summarized above; the output-length comparison remains absent.
+
+## Pixel scissors cursor follow-up
+
+Added a native 32×32 SVG cursor for fine pointers with hover support. An earlier Chrome spot check confirmed cursor CSS on the page, links, and buttons, text editing in the input, SVG decoding, and the touch-only fallback; the frontend build passed. After Amanda requested removal of the pink/yellow fills, the handles were made transparent and the updated SVG passed XML parsing and a check that those fills were absent. Browser checks were not rerun after that final asset edit. Native cursors are not visible in the documentation screenshots.
+
+## Earlier backend automated tests — 24 October 2026
+
+That revision's Maven `verify` run passed with 56 backend checks and no failures or errors: 55 Surefire tests, followed by one packaged-application restart integration test through Failsafe. The latest suite has grown; its counts are recorded above.
 
 - Base62EncoderTest: 14 tests, 0 failures, 0 errors.
 - SequenceMigrationTest: 5 tests, 0 failures, 0 errors.
@@ -12,7 +44,7 @@ The current Maven `verify` run passed with 56 backend checks and no failures or 
 - ShortLinkServiceTest: 27 tests, 0 failures, 0 errors.
 - ShortLinkRestartIT: 1 test, 0 failures, 0 errors.
 
-`mvn test` runs the first 55 checks. `mvn verify` also builds the executable JAR and runs the restart integration check. GitHub's existing backend workflow invokes `verify`, so it includes that check automatically on the next hosted run.
+At that revision, `mvn test` ran the first 55 checks. `mvn verify` also built the executable JAR and ran the restart integration check. GitHub's backend workflow still invokes `verify`, so the next hosted run includes the updated suite and restart check.
 
 ## Real-input scissors interaction — 24 October 2026
 

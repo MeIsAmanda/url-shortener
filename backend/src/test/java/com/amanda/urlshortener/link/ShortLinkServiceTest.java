@@ -27,20 +27,35 @@ class ShortLinkServiceTest {
 
     @Test
     void savesTheAllocatedIdAndItsBase62Code() {
-        CreateLinkResponse response = service.create("  " + ORIGINAL + "  ");
-        assertEquals("  " + ORIGINAL + "  ", response.originalUrl());
+        CreateLinkResponse response = service.create(ORIGINAL);
+        assertEquals(ORIGINAL, response.originalUrl());
         assertEquals("http://localhost:8080/s/4C92", response.shortUrl());
         verify(repository).saveAndFlush(argThat(link -> link.getId() == 1_000_000L
-                && link.getCode().equals("4C92") && link.getOriginalUrl().equals("  " + ORIGINAL + "  ")));
+                && link.getCode().equals("4C92") && link.getOriginalUrl().equals(ORIGINAL)));
         verify(allocator).nextId();
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"", "   ", "https://x.co", "example.com", "not a URL", "https://example.com\r\n"})
-    void savesSubmittedStringsWithoutDestinationOrLengthValidation(String input) {
+    @ValueSource(strings = {"https://x.co", "HTTPS://Example.COM/a%20b?x=%2F&x=two+words#Section"})
+    void savesValidUrlsWithoutRewritingOrOutputLengthComparison(String input) {
         CreateLinkResponse response = service.create(input);
         assertEquals(input, response.originalUrl());
         verify(repository).saveAndFlush(argThat(link -> input.equals(link.getOriginalUrl())));
+    }
+
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {"   ", "example.com", "not a URL", "https://example.com\r\n",
+        "https://example.com/?q=%ZZ", "https://example.notarealtld"})
+    void rejectsInvalidDestinationsBeforeAllocatingOrSaving(String input) {
+        assertThrows(InvalidUrlException.class, () -> service.create(input));
+        verifyNoInteractions(allocator, repository);
+    }
+
+    @Test
+    void rejectsOverlongUrlsBeforeAllocating() {
+        assertThrows(InvalidUrlException.class, () -> service.create("https://example.com/" + "a".repeat(2048)));
+        verifyNoInteractions(allocator, repository);
     }
 
     @Test

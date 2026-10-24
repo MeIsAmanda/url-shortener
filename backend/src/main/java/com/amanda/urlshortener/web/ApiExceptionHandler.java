@@ -1,6 +1,7 @@
 package com.amanda.urlshortener.web;
 
 import com.amanda.urlshortener.link.LinkNotFoundException;
+import com.amanda.urlshortener.link.InvalidUrlException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -17,6 +18,11 @@ public class ApiExceptionHandler extends org.springframework.web.servlet.mvc.met
             org.springframework.http.HttpHeaders headers, org.springframework.http.HttpStatusCode status,
             org.springframework.web.context.request.WebRequest request) {
         return ResponseEntity.badRequest().body(new ApiError("INVALID_REQUEST", "Send a JSON object with an originalUrl field."));
+    }
+
+    @ExceptionHandler(InvalidUrlException.class)
+    ResponseEntity<ApiError> invalidUrl(InvalidUrlException ex) {
+        return ResponseEntity.badRequest().body(new ApiError("INVALID_URL", ex.getMessage()));
     }
 
     @ExceptionHandler(LinkNotFoundException.class)

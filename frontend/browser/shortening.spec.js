@@ -36,10 +36,12 @@ for (const [width, height] of [[320, 780], [360, 900], [390, 900], [768, 900], [
   });
 }
 
-test('supports keyboard navigation and submits empty input unchanged', async ({ page }) => {
+test('supports keyboard validation and correction without a request for invalid input', async ({ page }) => {
+  let requests = 0;
   await page.route('**/api/urls', async (route) => {
-    expect(route.request().postDataJSON()).toEqual({ originalUrl: '' });
-    await route.fulfill({ status: 201, json: { originalUrl: '', shortUrl } });
+    requests++;
+    expect(route.request().postDataJSON()).toEqual({ originalUrl });
+    await route.fulfill({ status: 201, json: { originalUrl, shortUrl } });
   });
   await page.goto('/');
   await page.keyboard.press('Tab');
@@ -47,8 +49,98 @@ test('supports keyboard navigation and submits empty input unchanged', async ({ 
   const input = page.getByRole('textbox', { name: 'Put your long URL here!' });
   await input.focus();
   await input.press('Enter');
+  await expect(page.getByRole('alert')).toContainText('Enter a URL');
+  await expect(input).toBeFocused();
+  await expect(input).toHaveAttribute('aria-invalid', 'true');
+  expect(requests).toBe(0);
+  await input.fill(originalUrl);
+  await input.press('Enter');
   await expect(page.getByRole('link', { name: 'Open link' })).toHaveAttribute('href', shortUrl);
+  expect(requests).toBe(1);
 });
+
+for (const [index, [value, message]] of [
+  ['ftp://example.com', 'Include http:// or https://'],
+  ['https://example.notarealtld', 'recognized ending'],
+  ['https://example.com/?q=%ZZ', 'correctly encoded'],
+  ['https://example.com/a b', 'correctly encoded'],
+  ['https://example.com/' + 'a'.repeat(2048), '2,048'],
+].entries()) {
+  test('shows destination validation ' + index + ': ' + message, async ({ page }) => {
+    await page.setViewportSize({ width: 320, height: 780 });
+    let requests = 0;
+    await page.route('**/api/urls', () => { requests++; });
+    await page.goto('/');
+    const input = page.getByRole('textbox', { name: 'Put your long URL here!' });
+    await input.fill(value);
+    await page.getByRole('button', { name: 'Snip my link' }).click();
+    await expect(page.getByRole('alert')).toContainText(message);
+    await expect(input).toHaveValue(value);
+    await expect(input).toBeFocused();
+    expect(requests).toBe(0);
+    expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+  });
+}
+
+for (const [index, [typed, completed, width, enter]] of [
+  ['example.com/a?x=%2F#Section', 'https://example.com/a?x=%2F#Section', 320, false],
+  ['example.com:8443/a', 'https://example.com:8443/a', 1280, true],
+  ['http://example.com/a', 'http://example.com/a', 390, false],
+  ['//example.com/a', 'https://example.com/a', 390, true],
+].entries()) {
+  test('shows and submits the completed protocol ' + index, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.route('**/api/urls', async route => {
+      expect(route.request().postDataJSON()).toEqual({ originalUrl: completed });
+      await route.fulfill({ status: 201, json: { originalUrl: completed, shortUrl } });
+    });
+    await page.goto('/');
+    const input = page.getByRole('textbox', { name: 'Put your long URL here!' });
+    await input.fill(typed);
+    await expect(input).toHaveValue(completed);
+    if (enter) await input.press('Enter');
+    else await page.getByRole('button', { name: 'Snip my link' }).click();
+    await expect(page.getByRole('link', { name: 'Open link' })).toBeVisible();
+    await expect(input).toHaveValue(completed);
+    await expect(page.getByRole('alert')).toHaveCount(0);
+  });
+}
+
+for (const width of [320, 1280]) {
+  test('completes real keyboard entry without moving the caret or blocking edits at ' + width, async ({ page }) => {
+    await page.setViewportSize({ width, height: 900 });
+    await page.goto('/');
+    const input = page.getByRole('textbox', { name: 'Put your long URL here!' });
+    await input.click();
+    await input.pressSequentially('example');
+    await expect(input).toHaveValue('example');
+    await input.press('.');
+    await expect(input).toHaveValue('https://example.');
+    expect(await input.evaluate(field => field.selectionStart)).toBe('https://example.'.length);
+    await input.pressSequentially('com/a?x=%2F#Section');
+    await expect(input).toHaveValue('https://example.com/a?x=%2F#Section');
+    expect(await input.evaluate(field => field.selectionStart)).toBe('https://example.com/a?x=%2F#Section'.length);
+    // Replacing the value with its equivalent bare address may leave React's
+    // state unchanged. A subsequent middle edit must still retain its caret.
+    await input.fill('example.com/a?x=%2F#Section');
+    await expect(input).toHaveValue('https://example.com/a?x=%2F#Section');
+    await input.evaluate(field => field.setSelectionRange(15, 15));
+    await input.pressSequentially('-new');
+    await expect(input).toHaveValue('https://example-new.com/a?x=%2F#Section');
+    expect(await input.evaluate(field => field.selectionStart)).toBe(19);
+    await input.fill('https://example.com/a?x=%2F#Section');
+    await input.evaluate(field => field.setSelectionRange(0, 8));
+    await input.press('Backspace');
+    await expect(input).toHaveValue('example.com/a?x=%2F#Section');
+    await input.pressSequentially('http://');
+    await expect(input).toHaveValue('http://example.com/a?x=%2F#Section');
+    await input.press('ControlOrMeta+a');
+    await input.press('Backspace');
+    await expect(input).toHaveValue('');
+    await input.pressSequentially('https://example.com');
+    await expect(input).toHaveValue('https://example.com');
+  });
+}
 
 test('shows clipboard guidance when the browser denies access', async ({ page }) => {
   await page.addInitScript(() => Object.defineProperty(navigator, 'clipboard', {

@@ -9,6 +9,8 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -74,21 +76,43 @@ class ShortLinkApiTest {
             .andExpect(status().isFound()).andExpect(header().string("Location", "https://x.co"));
     }
 
-    @Test
-    void storesUnvalidatedTextVerbatim() throws Exception {
+    @ParameterizedTest
+    @ValueSource(strings = {"", "  supplied text  ", "example.com", "ftp://example.com", "https://example.invalid",
+        "https://example.com/?q=%ZZ", "https://example.com/a b", "http://localhost:8080"})
+    void rejectsInvalidDestinationsWithoutSaving(String input) throws Exception {
         mvc.perform(post("/api/urls").contentType(MediaType.APPLICATION_JSON)
-            .content("{\"originalUrl\":\"  supplied text  \"}"))
-            .andExpect(status().isCreated()).andExpect(jsonPath("$.originalUrl").value("  supplied text  "));
-        assertEquals("  supplied text  ", repository.findAll().getFirst().getOriginalUrl());
+            .content("{\"originalUrl\":\"" + input + "\"}"))
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_URL"));
+        assertEquals(0, repository.count());
     }
 
     @Test
-    void storesDestinationsBeyondTheOldColumnLimit() throws Exception {
-        String original = "https://example.com/" + "a".repeat(5000);
+    void acceptsTheLengthBoundaryAndRejectsOneCharacterBeyondIt() throws Exception {
+        String original = "https://example.com/" + "a".repeat(2048 - "https://example.com/".length());
         mvc.perform(post("/api/urls").contentType(MediaType.APPLICATION_JSON)
             .content("{\"originalUrl\":\"" + original + "\"}"))
             .andExpect(status().isCreated()).andExpect(jsonPath("$.originalUrl").value(original));
         assertEquals(original, repository.findAll().getFirst().getOriginalUrl());
+        mvc.perform(post("/api/urls").contentType(MediaType.APPLICATION_JSON)
+            .content("{\"originalUrl\":\"" + original + "a\"}"))
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_URL"));
+        assertEquals(1, repository.count());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"{}", "{\"originalUrl\":null}"})
+    void rejectsMissingOrNullDestination(String body) throws Exception {
+        mvc.perform(post("/api/urls").contentType(MediaType.APPLICATION_JSON).content(body))
+            .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_URL"));
+        assertEquals(0, repository.count());
+    }
+
+    @Test
+    void doesNotRevalidateExistingMappingsOnRedirect() throws Exception {
+        String legacyDestination = "https://example.com/" + "a".repeat(5000);
+        repository.saveAndFlush(new ShortLink(9_000_000L, "Legacy1", legacyDestination));
+        mvc.perform(get("/s/Legacy1")).andExpect(status().isFound())
+            .andExpect(header().string("Location", legacyDestination));
     }
 
     @Test

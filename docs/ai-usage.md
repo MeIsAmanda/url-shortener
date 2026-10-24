@@ -1,18 +1,26 @@
+# AI usage and learning notes
+
+The current implementation is Sniply: Java 25/Spring Boot, React, a database sequence followed by Base62 encoding, and Flyway migrations. As of 25 October 2026, new destinations must pass the [URL validation policy](url-validation.md), including HTTP(S), domain/TLD, encoding, and a 2,048-character maximum. Accepted URLs are stored unchanged, without an output-length requirement. See [prompt-template.md](prompt-template.md) for reusable context.
+
 ## Prompt structure
 
 Context → bounded task → constraints → acceptance criteria → expected output → independent verification.
 
 Example prompt:
 
-> Context: Spring Boot URL shortener; POST /api/urls creates a mapping and GET /s/{code} redirects. Task: Review the URL validator for missing cases. Constraints: Do not fetch destinations or alter query strings. Acceptance criteria: Reject unsupported schemes, missing hostnames, credentials, controls, and over-limit input. Preserve valid destinations. Output: Explain findings and suggest targeted tests. Verification: I will inspect changes and run the tests.
+> Context: Sniply uses Java 25/Spring Boot and React; POST /api/urls creates a mapping and GET /s/{code} redirects. Task: Review destination validation and exact storage of accepted URLs. Constraints: Follow url-validation.md; do not fetch, trim, or normalize destinations; preserve existing aliases. Acceptance criteria: Reject invalid/over-limit input before allocation, preserve accepted encodings and query strings, retain unique Base62 codes, and propagate storage failures. Output: Explain findings and suggest targeted tests. Verification: I will inspect the changes and assertions, then run the relevant checks.
 
-## First milestone decisions to review
+## Current decisions to review
 
-- Database uniqueness is essential even when random codes make collisions unlikely.
-- Each insert needs its own transaction so a failed collision does not poison a retry.
+- The database sequence allocates an ID before the row is inserted; allocation alone does not create a mapping.
+- Base62 encodes that ID; the database still enforces primary-key and code uniqueness. Current codes have variable length, not a fixed seven characters.
+- Allocator/insert failures propagate without a collision retry loop. Sequence gaps are expected and do not represent saved link rows.
 - Generated links use configured PUBLIC_BASE_URL instead of the request Host header.
-- The complete generated link must be shorter, including hostname and port.
-- URL validation does not prove that a destination exists or is safe.
+- New destinations are validated before allocation with a 2,048-character limit. Accepted strings are preserved, and generated links may be longer than the input. Validation does not prove website availability or safety.
+- Flyway migrations preserve existing aliases; file-based H2 data must be backed up with the backend stopped.
+- Test results are assistant-run evidence, not a substitute for Amanda's review. Security scans, load tests, and hosted CI confirmation remain separate work.
+
+The personal logs below retain Amanda's wording. Technical clarification for the earlier research notes: uniqueness depends on coordinated allocation and preserved database state, not Base62 alone. The original random implementation handled insert conflicts through the database constraint and retries; it did not run a pre-insert existence query. See [backend-design.md](backend-design.md) for the architectural corrections.
 
 ## Amanda's Work log
 - Provided requirements to GPT (Addition requirements/constraints like prompt framework, load/stress testing)

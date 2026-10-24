@@ -1,3 +1,5 @@
+import { validateDestination } from './urlValidation.js';
+
 const NETWORK_ERROR = 'We couldn’t connect. Check your connection and try again.';
 
 export class LinkRequestError extends Error {
@@ -19,12 +21,14 @@ function isHttpUrl(value) {
 }
 
 export async function createLink(originalUrl) {
+  const validationError = validateDestination(originalUrl);
+  if (validationError) throw new LinkRequestError(validationError, true);
   let response;
   try {
     response = await fetch('/api/urls', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      // Store the submitted string unchanged; destination validity is assumed.
+      // Validate without rewriting the submitted URL.
       body: JSON.stringify({ originalUrl }),
       signal: AbortSignal.timeout(15000),
     });
@@ -38,6 +42,7 @@ export async function createLink(originalUrl) {
     if (response.status === 400) {
       throw new LinkRequestError(
         typeof data?.message === 'string' ? data.message : 'We couldn’t process the request. Please try again.',
+        data?.code === 'INVALID_URL',
       );
     }
     if (response.status === 429) {

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { act, render, screen, waitFor, within } from '@testing-library/react';
+import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import App from './App.jsx';
 
@@ -49,22 +49,65 @@ describe('the shortening journey', () => {
     expect(input).toHaveValue(originalUrl);
   });
 
-  it('submits blank input without destination validation', async () => {
-    fetch.mockResolvedValue({ ok: true, status: 201, json: async () => ({ originalUrl: '', shortUrl }) });
-    const { user, submit } = setup();
+  it('rejects blank input and focuses the field without requesting or animating', async () => {
+    const { user, input, submit } = setup();
     await user.click(submit);
-    expect(await screen.findByRole('link', { name: 'Open link' })).toBeInTheDocument();
-    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({ originalUrl: '' });
+    expect(await screen.findByRole('alert')).toHaveTextContent('Enter a URL');
+    expect(input).toHaveFocus();
+    expect(input).toHaveAttribute('aria-invalid', 'true');
+    expect(fetch).not.toHaveBeenCalled();
+    expect(screen.getByTestId('cutting-scene')).not.toHaveClass('is-snipping');
   });
 
-  it('submits input without requiring a scheme', async () => {
-    fetch.mockResolvedValue({ ok: true, status: 201, json: async () => ({ originalUrl: 'example.com', shortUrl }) });
-    const { user, input, submit } = setup();
+  it('shows the default protocol and sends the completed URL on Enter', async () => {
+    fetch.mockResolvedValue(success());
+    const { user, input } = setup();
     await user.type(input, 'example.com');
-    await user.click(submit);
+    expect(input).toHaveValue('https://example.com');
+    await user.keyboard('{Enter}');
     expect(await screen.findByRole('link', { name: 'Open link' })).toBeInTheDocument();
+    expect(input).toHaveValue('https://example.com');
+    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({ originalUrl: 'https://example.com' });
+    expect(input).toHaveFocus();
+    expect(screen.queryByRole('alert')).not.toBeInTheDocument();
+  });
+
+  it('completes the protocol during typing and can still clear it', async () => {
+    const { user, input } = setup();
+    await user.type(input, 'example.com/a?x=%2F#Section');
+    expect(input).toHaveValue('https://example.com/a?x=%2F#Section');
+    await user.tab();
+    expect(input).toHaveValue('https://example.com/a?x=%2F#Section');
+    expect(fetch).not.toHaveBeenCalled();
+    await user.click(screen.getByRole('button', { name: 'Clear URL' }));
+    expect(input).toHaveValue('');
+    expect(input).toHaveFocus();
+  });
+
+  it('lets keyboard users delete the prefix and type an explicit protocol', async () => {
+    const { user, input } = setup();
+    await user.type(input, 'example.com');
+    input.setSelectionRange(0, 8);
+    await user.keyboard('{Backspace}');
     expect(input).toHaveValue('example.com');
-    expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({ originalUrl: 'example.com' });
+    await user.keyboard('http://');
+    expect(input).toHaveValue('http://example.com');
+    await user.clear(input);
+    await user.type(input, 'http://example.com');
+    expect(input).toHaveValue('http://example.com');
+  });
+
+  it('waits for composition to finish before completing the protocol', () => {
+    const { input } = setup();
+    fireEvent.compositionStart(input);
+    fireEvent.input(input, {
+      target: { value: 'example.com' },
+      isComposing: true,
+      inputType: 'insertCompositionText',
+    });
+    expect(input).toHaveValue('example.com');
+    fireEvent.compositionEnd(input);
+    expect(input).toHaveValue('https://example.com');
   });
 
   it('submits with Enter and displays the real returned destination and short link', async () => {

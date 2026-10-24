@@ -1,9 +1,9 @@
-# STB URL Shortener Assessment Plan
+# Sniply — STB URL Shortener Assessment Plan
 
 Submission deadline: Tuesday 27 October 2026 at 6pm Singapore time  
 Planning date: 24 October 2026
 
-Current policy update (24 October 2026): at Amanda's request, store destination strings unchanged, assume they are valid, and create mappings even when the generated URL is equal in length or longer. This replaces the earlier destination-validation and strict-shortening criteria. Website existence was never checked. JSON parsing, ID/code integrity, and application-configuration checks still apply.
+Current policy update (25 October 2026): at Amanda's request, validate new destination URLs for HTTP(S), domain/TLD format, correct percent escapes, absence of raw whitespace, and a 2,048-character maximum. Store accepted URLs unchanged and create mappings even when the generated URL is equal in length or longer. This supersedes the accept-any-string policy from 24 October. Website availability is not checked. See [url-validation.md](url-validation.md).
 
 ## Purpose and recommended scope
 
@@ -11,13 +11,19 @@ Build a small, complete URL shortener that demonstrates full stack development, 
 
 Complete the required features first. Introduce basic security and a lightweight AI prompting workflow from the beginning. Perform security scans and load testing after a working version exists, leaving time to fix findings. This is a plan, not a record of completed implementation or test results.
 
+### Current implementation and remaining work
+
+The sequence/Base62 backend, Flyway V1–V3 migrations, file-based H2 persistence, Sniply frontend, scissors interaction, frontend/backend tests, and GitHub Actions workflow are implemented. Recorded local results are in [verification.md](verification.md); those results do not establish that user review or hosted CI has completed.
+
+Next: review the code and test assertions, check the UI on an actual phone, and confirm the latest GitHub checks. Security scanning/hardening and performance measurements remain deferred to their own milestones. Finish with a clean-checkout check and submission review. Keep the final checklist unchecked until its complete requirement has been confirmed.
+
 ## 1 Requirements and completion criteria
 
 | Requirement | Completion criteria |
 | --- | --- |
 | Web application | Landing page loads and communicates what the tool does |
-| URL input | Labelled text box submits the destination string unchanged |
-| Destination policy | Assume input is valid; do not check syntax, scheme, reachability, or trim it |
+| URL input | Labelled text box validates and submits accepted URLs unchanged |
+| Destination policy | HTTP(S), valid recognized domain/TLD, encoded special characters, no raw whitespace, maximum 2,048 characters; no reachability check |
 | Shorten button | Clicking the button or pressing Enter submits the form |
 | Feedback view | Displays a clickable short URL and copy action |
 | Output policy | Create mappings even when generated URLs are equal in length or longer |
@@ -28,14 +34,14 @@ Complete the required features first. Introduce basic security and a lightweight
 | Code quality | Clear responsibilities, consistent naming, readable errors, minimal duplication |
 | Submission | GitHub repository includes source, setup instructions, tests, and limitations |
 
-Assumption: submitted destination strings are valid links. They are stored verbatim without syntax or reachability checks. Storing a string does not establish that a browser can follow it.
+Accepted destinations are stored verbatim after syntax validation. Format/TLD validation does not prove that the domain is registered, the website is available, or the destination is safe.
 
 ## 2 Technology choices
 
 | Component | Proposed choice | Reason |
 | --- | --- | --- |
 | Frontend | React with Vite | Small interactive interface and straightforward setup |
-| Language | JavaScript or TypeScript | Choose based on confidence and available learning time |
+| Language | Java 25 backend; JavaScript frontend | Matches the implemented Maven and React projects |
 | Styling | CSS | Sufficient for a polished responsive single page |
 | Backend | Spring Boot with Maven wrapper | Demonstrates Java API and backend skills |
 | Persistence | File-based H2 with Spring Data JPA | Simple local setup and persistence across restarts |
@@ -53,7 +59,7 @@ Use supported stable releases compatible with each other and document the actual
 
 1. User opens the landing page and enters a long URL.
 2. React submits it to the backend.
-3. Backend accepts the submitted destination string without trimming or URL validation.
+3. Backend validates the submitted URL before ID allocation; invalid values return 400 INVALID_URL. Accepted input is not trimmed or rewritten.
 4. A database-backed allocator obtains a unique positive integer from the shared H2 sequence; a separate Base62 encoder converts it to a compact code.
 5. Service constructs the generated URL from the configured public base URL without comparing lengths.
 6. Database stores the allocated ID, code, original destination, and timestamp. The primary key and code uniqueness constraint remain authoritative.
@@ -68,7 +74,7 @@ Keep the original destination semantics, including its path, query string, and f
 
 | Endpoint | Success | Error examples |
 | --- | --- | --- |
-| POST /api/urls | 201 with unchanged originalUrl and generated shortUrl | 400 malformed JSON; 500 storage/allocation failure |
+| POST /api/urls | 201 with unchanged accepted originalUrl and generated shortUrl | 400 INVALID_URL for destination policy; 400 INVALID_REQUEST for malformed JSON; 500 storage/allocation failure |
 | GET /s/{code} | 302 with Location header | 404 unknown code |
 
 Use a consistent JSON error structure, such as code and message. Display a friendly unknown-link page for browser users where practical. Choose one repeated-input policy and document it; generating a new mapping each time is sufficient for this scope.
@@ -83,7 +89,8 @@ Use a consistent JSON error structure, such as code and message. Display a frien
 ### Responsibilities
 
 - Controller: request and response handling.
-- Service: coordinate ID allocation, encoding, verbatim destination storage, and lookups.
+- Service: validate before coordinating ID allocation, encoding, verbatim destination storage, and lookups.
+- UrlValidator: enforce the documented format/TLD/length policy using a bundled IANA snapshot, with no DNS or HTTP lookup.
 - LinkIdAllocator: the ID-source boundary; DatabaseLinkIdAllocator uses the shared H2 sequence.
 - Base62Encoder: deterministic integer encoding using 0–9, A–Z, and a–z; no database access or randomness.
 - Repository: database access.
@@ -99,7 +106,7 @@ Keep the mapping table and unique constraints. Redirects look up the exact store
 
 Flyway now owns versioned H2 schema changes; Hibernate validates the schema instead of modifying it. V1 adopts the original table; V2 widens the code column, replaces identity-column allocation with a named sequence, and starts it above both all existing primary keys and the numeric values of all legacy codes. The one-time scan prevents overlap with old aliases. Migration history and sequence state survive restarts; never reset a live sequence. Back up the stopped file database before its first migrated launch. This migration supports the original seven-character legacy schema, not arbitrary custom schemas.
 
-This is a database-coordinated design, not a claim that the application reproduces Bitly's internal implementation or is already distributed. The existing backend already had a service boundary and database-enforced uniqueness. Random generation with a unique constraint can also scale. Base62 supplies compact representation; the sequence supplies unique numbers. Increasing allocated IDs need not produce completion-ordered responses, and gaps are expected after rejected requests, failed inserts, or rollbacks.
+This is a database-coordinated design, not a claim that the application reproduces Bitly's internal implementation or is already distributed. The existing backend already had a service boundary and database-enforced uniqueness. Random generation with a unique constraint can also scale. Base62 supplies compact representation; the sequence supplies unique numbers. Increasing allocated IDs need not produce completion-ordered responses. Invalid destinations are rejected before allocation; failed inserts or rollbacks after allocation can leave gaps.
 
 Sequential public codes are enumerable. They are not credentials or authorization. The current embedded H2 file is still a single-instance assessment choice. A later deployment with multiple application instances would need a shared database and suitable allocator implementation; Redis, Snowflake, coordination services, click analytics, expiry, and status management remain outside this change. No performance improvement is claimed until measured. See [backend design](backend-design.md) for examples and migration details.
 
@@ -107,11 +114,12 @@ Configure H2 connections with `SET WRITE_DELAY 0` so committed writes do not ret
 
 ### Input decisions
 
-- Store the submitted string exactly, including whitespace; do not normalize it.
-- Assume destination validity; do not check syntax, scheme, host, credentials, control characters, or website existence during creation.
+- Validate new URLs according to [url-validation.md](url-validation.md), including HTTP(S), recognized domain/TLD, percent escapes, no raw whitespace/controls, and a 2,048-character maximum.
+- Store accepted input exactly; do not trim or normalize it. Reject credentials, localhost/IP-only hosts, and raw Unicode; support encoded characters and Punycode domains.
+- Do not check website existence or availability during creation.
 - Do not compare generated URL length with input length.
-- Remove the old 4096-character cap. Flyway V3 widens the destination column to CLOB, preserving mappings and allocator state.
-- Remove matching frontend input checks. Keep network, malformed-request, and clipboard error feedback.
+- Keep Flyway V3's CLOB column and existing mappings. Enforce the new creation-time limit without a schema migration or redirect-time revalidation.
+- Mirror the policy in the frontend, show accessible field errors without starting the scissors animation, and allow correction/retry. Keep network, malformed-request, and clipboard error feedback.
 - Redirects still need a usable HTTP Location header; an unusable saved destination can fail when opened. Creation does not guarantee a usable redirect.
 
 ## 5 Frontend and mobile outline
@@ -119,6 +127,10 @@ Configure H2 connections with `SET WRITE_DELAY 0` so committed writes do not ret
 Use one compact, whimsical scissors-themed page inspired by Amanda's reference: soft blue browser chrome, cream background, rounded type, an original character holding oversized scissors, and small decorative icons. Keep copy brief and omit the previous explanatory paragraphs and three-step section. Include a labelled input, clear action, **Snip my link** button, request/error feedback, and a compact result with Copy, Open, and expandable Original link actions.
 
 Use **Sniply** branding. Label the input **Put your long URL here!** with a decorative curly arrow pointing down to the field. Keep confetti below the input, including during the cutting animation, and keep the character's shirt plain.
+
+Complete an omitted protocol as https:// during bare-hostname keyboard entry/paste, with blur/submission as a fallback and display it in the textbox before validation/creation. Preserve explicit schemes and encoded path/query/fragment text. Handle bare hostnames with ports and protocol-relative addresses; leave blank input blank. Include the added prefix in the 2,048-character limit. Direct backend API requests still require an explicit HTTP(S) URL.
+
+Use a native 32×32 pixel-art scissors cursor for fine pointers with hover support. Keep its handle centers transparent, retain the text cursor in editable fields, preserve pending-state feedback, and leave touch-only behavior unchanged. Use CSS cursor fallbacks rather than JavaScript mouse tracking.
 
 On every submission, replay a finite SVG/CSS cutting animation independently of the network request. Use transforms and opacity for scene motion; never wait for the animation before sending the request or displaying its response. Do not loop the scene while idle. Respect reduced-motion preferences by disabling decorative animation. Keep artwork and controls responsive, with no animation-library dependency.
 
@@ -148,13 +160,13 @@ Use this simple prompt structure:
 
 ### Reusable example
 
-> Context: I am building a URL shortener with Spring Boot and React. POST /api/urls accepts an originalUrl and returns a shortUrl. Destination strings are stored unchanged and assumed valid. Generated output need not be shorter. The public base URL is configurable.
+> Context: I am building Sniply with Java 25/Spring Boot and React. POST /api/urls validates an originalUrl and returns a shortUrl. Accepted URLs are stored unchanged. Generated output need not be shorter. The public base URL is configurable.
 >
 > Task: Review mapping creation and exact input preservation. Do not change unrelated files.
 >
 > Constraints: Do not fetch destination URLs, add dependencies, introduce authentication, or change destination query parameters. Explain any uncertainty.
 >
-> Acceptance criteria: Preserve submitted strings exactly, including whitespace, query strings, and fragments. Accept short strings and strings beyond the former 4096-character cap. Keep generated codes unique.
+> Acceptance criteria: Enforce the documented HTTP(S), domain/TLD, encoding, and 2,048-character policy before allocation. Reject whitespace and malformed input. Preserve accepted query strings and fragments exactly, and keep generated codes unique.
 >
 > Output: List findings with reasons, propose the smallest changes, and suggest tests.
 >
@@ -166,7 +178,7 @@ Keep a concise docs/ai-usage.md with a few useful prompts, what you accepted or 
 
 ### Build basic protections early
 
-- Current destination policy assumes valid input. Review request-body limits in the later security milestone; destination validation is intentionally absent.
+- Current creation-time destination validation is documented in url-validation.md. Review total request-body limits in the later security milestone; a URL length rule is not a body-size limit.
 - Never fetch or preview a submitted destination on the server. This avoids introducing server-side request forgery through a destination-fetch feature.
 - Use repository parameter binding instead of constructing SQL from input.
 - Render URLs as text and safe link attributes; do not insert user input as HTML.
@@ -222,7 +234,7 @@ Test creation and redirects separately first, then optionally run a documented m
 
 For redirects, disable automatic redirect following and check the 302 status and Location header. Otherwise tests may generate traffic to third-party destinations and measure their performance. Test only your own application and infrastructure you are authorised to test.
 
-Example provisional normal-load goals: p95 under 500 ms for creation, p95 under 200 ms for redirect lookup, and under 1 percent unexpected errors. These are self-selected local goals, not promised results or production SLAs. Configure k6 success handling so expected 302 responses count as success. Keep deliberate validation errors and expected rate-limit 429 responses separate from unexpected failures.
+Example provisional normal-load goals: p95 under 500 ms for creation, p95 under 200 ms for redirect lookup, and under 1 percent unexpected errors. These are self-selected local goals, not promised results or production SLAs. Configure k6 success handling so expected 302 responses count as success. Keep malformed-request errors and any future expected rate-limit 429 responses separate from unexpected failures.
 
 Record the command, application commit, machine/runtime details, dataset size, warm-up, duration, virtual users, pacing, achieved throughput, endpoint latency, error rate, and limitations in docs/performance.md. Report actual measurements honestly. Repeat after a relevant fix, not endlessly. Local tests do not establish production capacity.
 
@@ -232,8 +244,9 @@ Time budget: about 60 to 90 minutes for a useful initial script and report; deep
 
 ### Backend unit tests
 
-- Exact string preservation, including whitespace, empty strings, missing schemes, and short inputs.
-- Inputs above the former 4096-character storage limit.
+- Exact preservation of accepted URLs, including encoding, query order, case, and fragments; valid short URLs remain accepted.
+- Rejection of missing schemes, invalid domains/TLDs, whitespace/controls, malformed escapes, null/empty input, and over-limit input before ID allocation or insertion.
+- Acceptance at exactly 2,048 characters and rejection at 2,049; existing over-limit mappings still redirect.
 - Base62 known values, digit-length boundaries, negative input rejection, and the full positive-long range.
 - Store the allocated ID, its encoding, and the unmodified submitted destination.
 - Allocator and insert failures propagate without retries or false success.
@@ -253,7 +266,7 @@ Time budget: about 60 to 90 minutes for a useful initial script and report; deep
 
 ### Frontend tests and manual checks
 
-- Form submission, loading, success, validation, and server failure states.
+- Form submission, field validation and correction, loading, success, malformed-response handling, and server failure states.
 - Copy success and failure feedback.
 - Keyboard submission and accessible labels.
 - Desktop and mobile layouts, long URL wrapping, and retry behaviour.
@@ -263,7 +276,7 @@ Include required unit tests explicitly; load tests and security scans do not rep
 
 ## 10 Repository and delivery outline
 
-Suggested folders: backend/, frontend/, docs/, and tests/load/. Keep one root README.md and .gitignore. Add a GitHub Actions workflow for backend tests and frontend tests/build once local commands work.
+The current repository contains backend/, frontend/, docs/, a root README.md and .gitignore, and .github/workflows/checks.yml. The workflow runs backend verify and frontend tests/build/browser checks. Confirm the latest hosted run after pushing. Add tests/load/ and security/performance reports when those milestones begin; they are not implemented yet.
 
 The README should cover the app, prerequisites, exact run and test commands, environment settings, persistence, API examples, architecture, validation decisions, desktop/mobile screenshots, known limitations, and links to AI usage, security, and performance notes. A clean checkout should run without private local files.
 
@@ -271,14 +284,14 @@ The README should cover the app, prerequisites, exact run and test commands, env
 
 | Date | Work and order | Completion checkpoint |
 | --- | --- | --- |
-| Sat 24 Oct | Confirm scope; create repository; write prompt template; implement API, database, validation, redirects, and unit tests; add basic security as code is written | Can create and follow a short URL; data survives restart |
+| Sat 24 Oct | Confirm scope; create repository; write prompt template; implement API, database, destination storage, redirects, and unit tests; add basic security as code is written | Can create and follow a short URL; data survives restart |
 | Sun 25 Oct | Build React interface and mobile styles; connect API; add frontend tests; establish CI; run initial dependency/source scans | Complete user journey works; scans started with time left to fix findings |
 | Mon 26 Oct morning | Fix functional/security findings; finish accessibility and mobile checks; optionally run ZAP baseline | Stable candidate with required tests passing |
 | Mon 26 Oct afternoon | Run k6 smoke and normal-load tests; add a bounded higher-load/recovery test if time allows; fix material issues and write reports | Repeatable test scripts and honest documented results |
 | Tue 27 Oct morning | Test a clean clone; rerun relevant checks; finish README and AI learning notes; inspect GitHub contents and access | Submission ready by about 3pm Singapore time |
 | Tue 27 Oct before 6pm | Send repository link using the requested email process; verify submission | Submitted before the deadline |
 
-Protect a submission buffer. If behind, cut optional ZAP, elaborate monitoring, deep stress testing, and deployment first. Keep required functionality, unit tests, responsive UI, validation, and setup documentation. A small normal-load test and clear limitation note are better than unfinished infrastructure.
+Protect a submission buffer. If behind, cut optional ZAP, elaborate monitoring, deep stress testing, and deployment first. Keep required functionality, unit tests, responsive UI, the agreed destination policy, and setup documentation. A small normal-load test and clear limitation note are better than unfinished infrastructure. This original timeline is planning guidance; use the current implementation summary and verification record for actual progress.
 
 ## 12 Final submission checklist
 

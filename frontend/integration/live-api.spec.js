@@ -58,3 +58,28 @@ test('saves a short destination even when the generated link is longer', async (
   expect((await open.getAttribute('href')).length).toBeGreaterThan('https://x.co'.length);
   await expect(input).toHaveValue('https://x.co');
 });
+
+test('corrects a validation error then preserves encoded input through a real redirect', async ({ page }) => {
+  await page.setViewportSize({ width: 320, height: 780 });
+  await page.goto('/');
+  const input = page.getByRole('textbox', { name: 'Put your long URL here!' });
+  await input.fill('example.com/?q=two words');
+  await page.getByRole('button', { name: 'Snip my link' }).click();
+  await expect(page.getByRole('alert')).toContainText('correctly encoded');
+  await expect(input).toHaveAttribute('aria-invalid', 'true');
+  if (process.env.CAPTURE_SCREENSHOTS) {
+    await page.screenshot({ path: path.resolve('../docs/screenshots/validation-mobile.png'), fullPage: true });
+  }
+  const originalUrl = 'https://Example.COM/a%20b?q=two+words&x=%2F&x=2#Section';
+  await input.fill(originalUrl.slice('https://'.length));
+  await page.getByRole('button', { name: 'Snip my link' }).click();
+  await expect(input).toHaveValue(originalUrl);
+  const shortUrl = await page.getByRole('link', { name: 'Open link' }).getAttribute('href');
+  const response = await page.request.get(new URL(shortUrl).pathname, { maxRedirects: 0 });
+  expect(response.status()).toBe(302);
+  expect(response.headers().location).toBe(originalUrl);
+  // Exercise the server directly as well: browser validation cannot be trusted.
+  const rejected = await page.request.post('/api/urls', { data: { originalUrl: 'https://example.com/?q=%ZZ' } });
+  expect(rejected.status()).toBe(400);
+  expect((await rejected.json()).code).toBe('INVALID_URL');
+});

@@ -10,19 +10,29 @@ beforeEach(() => vi.stubGlobal('fetch', vi.fn()));
 describe('createLink API boundary', () => {
   it('posts the exact submitted destination and returns the API result', async () => {
     fetch.mockResolvedValue(response(201, { originalUrl: destination, shortUrl }));
-    expect(await createLink(`  ${destination}  `)).toEqual({ originalUrl: destination, shortUrl });
+    expect(await createLink(destination)).toEqual({ originalUrl: destination, shortUrl });
     expect(fetch).toHaveBeenCalledWith('/api/urls', expect.objectContaining({
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ originalUrl: `  ${destination}  ` }),
+      body: JSON.stringify({ originalUrl: destination }),
       signal: expect.any(AbortSignal),
     }));
   });
 
-  it.each(['', '   ', 'https://x.co', 'example.com', '  supplied text  '])('passes through the submitted string: %j', async (input) => {
+  it.each(['https://x.co', 'HTTPS://Example.COM/a%20b?x=%2F&x=two+words#Section'])('preserves a valid submitted URL: %j', async (input) => {
     fetch.mockResolvedValue(response(201, { originalUrl: input, shortUrl }));
     expect(await createLink(input)).toEqual({ originalUrl: input, shortUrl });
     expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({ originalUrl: input });
+  });
+
+  it.each(['', '   ', 'example.com', 'https://example.invalid', 'https://example.com/?q=%ZZ', 'https://example.com/' + 'a'.repeat(2048)])('rejects invalid input before fetching: %j', async input => {
+    await expect(createLink(input)).rejects.toMatchObject({ fieldError: true });
+    expect(fetch).not.toHaveBeenCalled();
+  });
+
+  it('exposes backend validation as a field error', async () => {
+    fetch.mockResolvedValue(response(400, { code: 'INVALID_URL', message: 'The URL is invalid.' }));
+    await expect(createLink(destination)).rejects.toMatchObject({ fieldError: true, message: 'The URL is invalid.' });
   });
 
   it('uses the request error message for a 400', async () => {
