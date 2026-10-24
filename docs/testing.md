@@ -28,12 +28,14 @@ In Vitest tests, `expect` checks an outcome, `vi.fn()` creates a controllable su
 
 | File | Cases | What it checks |
 | --- | ---: | --- |
-| `src/App.test.jsx` | 10 | Landing content, labels/navigation, unvalidated blank/missing-scheme/short submissions, Enter submission, pending handling, network retry, stale-result removal, and clipboard feedback |
+| `src/App.test.jsx` | 11 | Compact labelled tool without the old instructions, clear/reset and focus, unvalidated blank/missing-scheme/short submissions, Enter submission, pending handling, network retry, stale-result removal, and clipboard feedback |
 | `src/api.test.js` | 17 | Exact request/response preservation, blank/short/missing-scheme input, request errors, server/network failures, and malformed generated-link responses |
-| `browser/shortening.spec.js` | 6 | Result rendering and long-URL wrapping at 360/390/768/1280px, keyboard submission of empty input, and clipboard denial in a real browser with a stubbed API |
+| `browser/shortening.spec.js` | 10 | Results and expanded-original wrapping at 320/360/390/768/1280px and 844×390 landscape, keyboard submission, clipboard denial, animation replay without delaying fast results, and reduced-motion behavior |
 | `integration/live-api.spec.js` | 2 | Real API creation, actual clipboard contents, saved-code lookup and exact 302 Location, plus acceptance of a short destination with longer output |
 
 The frontend submits strings unchanged without destination validation. The API client checks the generated short URL and response shape, but does not validate the submitted/returned originalUrl. Backend API tests also verify verbatim storage and input above 4096 characters.
+
+The illustration is in `frontend/src/CuttingScene.jsx`; submission-driven transforms and opacity are in `src/styles.css`. It remounts once per submission to replay the finite animation and is memoized so input/copy updates do not redraw it. There is no minimum loading duration or animation-completion gate. Browser checks verify that a fast response is already usable while the scene still animates, and that reduced motion disables the scene animation. These are functional checks, not a frames-per-second benchmark. Open **Original link** to inspect the submitted destination; it stays collapsed initially to keep the result compact.
 
 ## Commands
 

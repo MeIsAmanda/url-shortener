@@ -10,17 +10,30 @@ const success = () => ({ ok: true, status: 201, json: async () => ({ originalUrl
 function setup() {
   const user = userEvent.setup();
   render(<App />);
-  return { user, input: screen.getByRole('textbox', { name: 'Your long URL' }), submit: screen.getByRole('button', { name: 'Shorten my link' }) };
+  return { user, input: screen.getByRole('textbox', { name: 'Your long URL' }), submit: screen.getByRole('button', { name: 'Snip my link' }) };
 }
 
 beforeEach(() => vi.stubGlobal('fetch', vi.fn()));
 
 describe('the shortening journey', () => {
-  it('provides a labelled form, landing content, and working section navigation', () => {
+  it('clears the destination and result and restores input focus', async () => {
+    fetch.mockResolvedValue(success());
+    const { user, input, submit } = setup();
+    await user.type(input, originalUrl);
+    await user.click(submit);
+    await screen.findByRole('link', { name: 'Open link' });
+    await user.click(screen.getByRole('button', { name: 'Clear URL' }));
+    expect(input).toHaveValue('');
+    expect(input).toHaveFocus();
+    expect(screen.queryByRole('link', { name: 'Open link' })).not.toBeInTheDocument();
+    expect(screen.getByRole('button', { name: 'Clear URL' })).toBeDisabled();
+  });
+
+  it('provides a compact labelled tool without the old instructional section', () => {
     setup();
-    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Good things.Short links.');
-    expect(screen.getByRole('link', { name: /How it works/ })).toHaveAttribute('href', '#how-it-works');
-    expect(screen.getByRole('heading', { name: 'Three steps. One small link.' })).toBeInTheDocument();
+    expect(screen.getByRole('heading', { level: 1 })).toHaveTextContent('Long link? Snip, snip.');
+    expect(screen.queryByRole('link', { name: /How it works/ })).not.toBeInTheDocument();
+    expect(screen.queryByRole('heading', { name: 'Three steps. One small link.' })).not.toBeInTheDocument();
   });
 
   it('submits blank input without destination validation', async () => {
@@ -58,14 +71,14 @@ describe('the shortening journey', () => {
     const { user, input, submit } = setup();
     await user.type(input, originalUrl);
     await user.click(submit);
-    expect(screen.getByRole('button', { name: 'Shortening…' })).toBeDisabled();
+    expect(screen.getByRole('button', { name: 'Snipping…' })).toBeDisabled();
     expect(input).toHaveAttribute('readonly');
     await user.click(submit);
     await user.click(input);
     await user.keyboard('{Enter}');
     expect(fetch).toHaveBeenCalledTimes(1);
     await act(async () => finish(success()));
-    expect(await screen.findByRole('button', { name: 'Shorten my link' })).toBeEnabled();
+    expect(await screen.findByRole('button', { name: 'Snip my link' })).toBeEnabled();
   });
 
   it('accepts a short destination and displays the generated link', async () => {

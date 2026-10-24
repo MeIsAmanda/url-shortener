@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import { createLink } from './api.js';
+import CuttingScene from './CuttingScene.jsx';
 import Icon from './Icons.jsx';
 
 export default function App() {
@@ -8,6 +9,7 @@ export default function App() {
   const [error, setError] = useState(null);
   const [result, setResult] = useState(null);
   const [copyState, setCopyState] = useState('idle');
+  const [snipCount, setSnipCount] = useState(0);
   const inputRef = useRef(null);
   const submitting = useRef(false);
   const resultVersion = useRef(0);
@@ -20,11 +22,13 @@ export default function App() {
     resultVersion.current += 1;
     setError(null);
     setPending(true);
+    setSnipCount((count) => count + 1);
     submitting.current = true;
+    // The illustration runs independently: never delay the API or its result.
     try {
       setResult(await createLink(input));
     } catch (failure) {
-      setError({ message: failure.message, fieldError: failure.fieldError });
+      setError({ message: failure.message });
       inputRef.current.focus();
     } finally {
       submitting.current = false;
@@ -43,76 +47,122 @@ export default function App() {
     }
   }
 
-  function handleChange(event) {
-    setInput(event.target.value);
+  function updateInput(value) {
+    setInput(value);
     setError(null);
     setResult(null);
     setCopyState('idle');
     resultVersion.current += 1;
   }
 
+  function clearInput() {
+    updateInput('');
+    inputRef.current.focus();
+  }
+
   return (
-    <>
+    <div className="shortly-page">
       <a className="skip-link" href="#main">Skip to content</a>
       <header className="site-header page-width">
-        <a className="wordmark" href="#" aria-label="Shortly home"><span className="brand-mark"><Icon name="link" /></span>shortly<span className="wordmark-dot">.</span></a>
-        <nav aria-label="Main navigation"><a href="#how-it-works">How it works <span aria-hidden="true">↗</span></a></nav>
+        <a className="wordmark" href="#" aria-label="Shortly home">
+          <span className="brand-mark"><Icon name="scissors" /></span>
+          shortly<span className="wordmark-dot">.</span>
+        </a>
+        <span className="header-note"><Icon name="sparkles" /> a little internet magic</span>
       </header>
 
-      <main id="main" className="page-width">
-        <section className="hero" aria-labelledby="hero-title">
-          <div className="hero-copy">
-            <p className="eyebrow"><span /> LESS LINK. MORE POSSIBILITY.</p>
-            <h1 id="hero-title">Good things.<br /><span>Short links.</span></h1>
-            <p className="hero-description">Some links take the long way round.<br className="desktop-break" /> Give yours a shortcut.</p>
-            <p className="hero-detail">Turn a long URL into a small, shareable link.<br />Ready for your next message, post, or big idea.</p>
-            <div className="hero-note"><span className="note-line" /><span>No account. Just a link.</span></div>
+      <main id="main" className="studio">
+        <div className="hero-heading">
+          <span className="heading-doodle heading-doodle--left" aria-hidden="true"><Icon name="sparkles" /></span>
+          <h1>Long link? <span>Snip, snip.<svg viewBox="0 0 290 14" aria-hidden="true"><path d="M5 9Q145-2 285 7M38 12Q160 4 251 10" /></svg></span></h1>
+          <span className="heading-doodle heading-doodle--right" aria-hidden="true"><Icon name="flower" /></span>
+        </div>
+
+        <div className="sticker sticker--link" aria-hidden="true"><Icon name="link" /></div>
+        <div className="sticker sticker--heart" aria-hidden="true"><Icon name="heart" /><span>with love</span></div>
+
+        <section className="paper-window" aria-label="Link shortener">
+          <div className="window-bar">
+            <span className="window-dots" aria-hidden="true"><i /><i /><i /></span>
+            <span className="window-title"><Icon name="globe" /> the little link studio</span>
+            <span className="window-star" aria-hidden="true"><Icon name="sparkles" /></span>
           </div>
 
-          <div className="shortener-wrap">
-            <div className="card-caption"><span className="caption-star" aria-hidden="true">✳</span> A SMALLER LINK STARTS HERE</div>
-            <section className="shortener-card" aria-labelledby="form-title">
-              <div className="card-heading"><span className="card-icon"><Icon name="link" /></span><span className="step-label">MAKE ROOM FOR LESS</span></div>
-              <h2 id="form-title">Let’s keep it short.</h2>
-              <p className="card-description">Your destination stays the same. Get a new link to share.</p>
+          <div className="window-body">
+            <div className="scene-frame">
+              <CuttingScene key={snipCount} active={snipCount > 0} />
+              <span className="scene-caption" aria-hidden="true">{pending ? 'snip in progress…' : 'a small snip of happiness'}</span>
+            </div>
 
-              <form onSubmit={handleSubmit} noValidate aria-busy={pending}>
-                <label htmlFor="original-url">Your long URL</label>
-                <input ref={inputRef} id="original-url" name="originalUrl" type="text" inputMode="url" autoComplete="url" autoCapitalize="none" spellCheck="false" value={input} onChange={handleChange} readOnly={pending} placeholder="https://example.com/something-worth-sharing" aria-invalid={Boolean(error?.fieldError)} aria-describedby={`url-hint${error ? ' form-error' : ''}`} />
-                <p id="url-hint" className="input-hint">Your destination is saved exactly as entered.</p>
-                {error && <p id="form-error" className="form-error" role="alert">{error.message}</p>}
-                <button className="primary-button" type="submit" disabled={pending}>{pending ? <><span className="spinner" aria-hidden="true" /> Shortening…</> : <>Shorten my link <Icon name="arrow" /></>}</button>
-                <p className="pending-announcement sr-only" role="status">{pending ? 'Creating your short link.' : ''}</p>
-              </form>
+            <form onSubmit={handleSubmit} noValidate aria-busy={pending}>
+              <label htmlFor="original-url"><Icon name="link" /> Your long URL</label>
+              <div className="form-row">
+                <div className="input-wrap">
+                  <input
+                    ref={inputRef}
+                    id="original-url"
+                    name="originalUrl"
+                    type="text"
+                    inputMode="url"
+                    autoComplete="url"
+                    autoCapitalize="none"
+                    spellCheck="false"
+                    value={input}
+                    onChange={(event) => updateInput(event.target.value)}
+                    readOnly={pending}
+                    placeholder="Pop your link in here…"
+                    aria-describedby={error ? 'url-hint form-error' : 'url-hint'}
+                  />
+                  <button className="clear-button" type="button" aria-label="Clear URL" onClick={clearInput} disabled={pending || !input}><Icon name="close" /></button>
+                </div>
+                <button className="primary-button" type="submit" disabled={pending}>
+                  <Icon name="scissors" />
+                  {pending ? 'Snipping…' : 'Snip my link'}
+                  <Icon name="sparkles" />
+                </button>
+              </div>
+              <p id="url-hint" className="sr-only">Your destination is saved exactly as entered.</p>
+              {error && <p id="form-error" className="form-error" role="alert"><Icon name="cloud" />{error.message}</p>}
+              <p className="sr-only" role="status">{pending ? 'Creating your short link.' : ''}</p>
+            </form>
 
-              {result && <section className="result-card" aria-labelledby="result-title">
-                <p id="result-title" className="result-title" role="status"><Icon name="check" /> Your link, a little lighter.</p>
-                <a className="short-url" href={result.shortUrl} target="_blank" rel="noopener noreferrer">{result.shortUrl}<Icon name="external" /></a>
-                <p className="original-url">Goes to <span>{result.originalUrl}</span></p>
-                <div className="result-actions">
-                  <button type="button" className="copy-button" onClick={handleCopy} disabled={copyState === 'copying'}><Icon name={copyState === 'copied' ? 'check' : 'copy'} />{copyState === 'copied' ? 'Copied!' : copyState === 'copying' ? 'Copying…' : 'Copy link'}</button>
+            {result && (
+              <section className="result-card" aria-labelledby="result-title">
+                <div className="result-heading">
+                  <p id="result-title" className="result-title" role="status"><span><Icon name="check" /></span>Freshly snipped!</p>
+                  <Icon name="sparkles" />
+                </div>
+                <div className="result-link-row">
+                  <a className="short-url" href={result.shortUrl} target="_blank" rel="noopener noreferrer">{result.shortUrl}</a>
+                  <button type="button" className="copy-button" onClick={handleCopy} disabled={copyState === 'copying'}>
+                    <Icon name={copyState === 'copied' ? 'check' : 'copy'} />
+                    {copyState === 'copied' ? 'Copied!' : copyState === 'copying' ? 'Copying…' : 'Copy link'}
+                  </button>
+                </div>
+                <div className="result-bottom">
+                  <details className="destination-details">
+                    <summary>Original link <Icon name="chevron" /></summary>
+                    <p className="original-url">{result.originalUrl}</p>
+                  </details>
                   <a className="open-link" href={result.shortUrl} target="_blank" rel="noopener noreferrer">Open link <Icon name="external" /></a>
                 </div>
-                <p className={copyState === 'failed' ? 'copy-message copy-error' : 'copy-message sr-only'} role="status">{copyState === 'failed' ? 'Couldn’t copy automatically. Select the short URL above and copy it manually.' : copyState === 'copied' ? 'Short link copied to clipboard.' : ''}</p>
-              </section>}
+                <p className={copyState === 'failed' ? 'copy-message copy-error' : 'copy-message sr-only'} role="status">
+                  {copyState === 'failed' ? 'Couldn’t copy automatically. Select the short URL above and copy it manually.' : copyState === 'copied' ? 'Short link copied to clipboard.' : ''}
+                </p>
+              </section>
+            )}
 
-              <div className="card-footer"><Icon name="check" /><span>Your link. Your original destination.</span></div>
-            </section>
-            <p className="under-card">A little less to type. A little easier to share.</p>
+            <div className="studio-note"><Icon name="smile" /><span>No account. Just a little snip.</span><Icon name="heart" /></div>
           </div>
         </section>
-
-        <section id="how-it-works" className="how-section" aria-labelledby="how-title">
-          <div className="how-heading"><p className="eyebrow">THE SHORT VERSION</p><h2 id="how-title">Three steps. One small link.</h2></div>
-          <ol className="steps">
-            <li><span className="step-number">01</span><h3>Bring your link.</h3><p>A useful article, a favourite place, or anything worth passing on.</p></li>
-            <li><span className="step-number">02</span><h3>Make it shorter.</h3><p>Paste your URL above. We’ll give it a shorter way to get there.</p></li>
-            <li><span className="step-number">03</span><h3>Send it on.</h3><p>Copy your new link and share it. Same destination, less to carry.</p></li>
-          </ol>
-        </section>
+        <p className="below-window"><Icon name="paper-plane" /> A little link, ready for its next adventure.</p>
       </main>
 
-      <footer className="site-footer page-width"><span className="footer-brand">shortly.</span><span>Small links. Ready to go.</span><a href="#main">Back to the top ↑</a></footer>
-    </>
+      <footer className="site-footer page-width">
+        <span>less link, more <Icon name="heart" /><span className="sr-only">love</span></span>
+        <span className="footer-doodle" aria-hidden="true"><span /><Icon name="scissors" /><span /></span>
+        <span>made to be shared.</span>
+      </footer>
+    </div>
   );
 }

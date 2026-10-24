@@ -116,7 +116,9 @@ Configure H2 connections with `SET WRITE_DELAY 0` so committed writes do not ret
 
 ## 5 Frontend and mobile outline
 
-One polished page is enough. Include a clear title, concise guidance, labelled URL input, example placeholder, Shorten button, loading feedback, inline errors, and a result card with a copy button and confirmation.
+Use one compact, whimsical scissors-themed page inspired by Amanda's reference: soft blue browser chrome, cream background, rounded type, an original character holding oversized scissors, and small decorative icons. Keep copy brief and omit the previous explanatory paragraphs and three-step section. Include a labelled input, clear action, **Snip my link** button, request/error feedback, and a compact result with Copy, Open, and expandable Original link actions.
+
+On every submission, replay a finite SVG/CSS cutting animation independently of the network request. Use transforms and opacity for scene motion; never wait for the animation before sending the request or displaying its response. Do not loop the scene while idle. Respect reduced-motion preferences by disabling decorative animation. Keep artwork and controls responsive, with no animation-library dependency.
 
 - Disable duplicate submissions while a request is pending.
 - Preserve the user's input after errors and allow retry.
@@ -124,7 +126,7 @@ One polished page is enough. Include a clear title, concise guidance, labelled U
 - Stack controls on narrow screens and keep tap targets comfortably sized.
 - Wrap long URLs without causing horizontal scrolling.
 - Support Enter submission, keyboard navigation, visible focus, readable contrast, and screen-reader announcements for results and errors.
-- Test approximate widths of 360, 390, 768, and 1280 pixels, plus an actual phone if available.
+- Test approximate widths of 320, 360, 390, 768, and 1280 pixels, plus a landscape viewport and an actual phone if available.
 - Check portrait and landscape, browser zoom, and the on-screen keyboard.
 
 ## 6 Lightweight prompt engineering workflow

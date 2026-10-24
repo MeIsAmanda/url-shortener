@@ -7,12 +7,12 @@ test('creates, copies, and resolves a real saved link', async ({ page, context }
   await page.goto('/');
   if (process.env.CAPTURE_SCREENSHOTS) {
     await page.evaluate(() => document.fonts.ready);
-    await page.screenshot({ path: path.resolve('../docs/screenshots/landing-desktop.png'), fullPage: true });
+    await page.screenshot({ path: path.resolve('../docs/screenshots/landing-desktop.png'), fullPage: true, animations: 'disabled' });
   }
 
   const originalUrl = 'https://example.com/a-long-path-for-the-live-frontend-check?campaign=assessment&x=1#section';
   await page.getByRole('textbox', { name: 'Your long URL' }).fill(originalUrl);
-  await page.getByRole('button', { name: 'Shorten my link' }).click();
+  await page.getByRole('button', { name: 'Snip my link' }).click();
   const open = page.getByRole('link', { name: 'Open link' });
   await expect(open).toBeVisible();
   const shortUrl = await open.getAttribute('href');
@@ -29,7 +29,7 @@ test('creates, copies, and resolves a real saved link', async ({ page, context }
   await page.setViewportSize({ width: 390, height: 844 });
   expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
   if (process.env.CAPTURE_SCREENSHOTS) {
-    await page.screenshot({ path: path.resolve('../docs/screenshots/result-mobile.png'), fullPage: true });
+    await page.screenshot({ path: path.resolve('../docs/screenshots/result-mobile.png'), fullPage: true, animations: 'disabled' });
   }
 });
 
@@ -37,7 +37,7 @@ test('saves a short destination even when the generated link is longer', async (
   await page.goto('/');
   const input = page.getByRole('textbox', { name: 'Your long URL' });
   await input.fill('https://x.co');
-  await page.getByRole('button', { name: 'Shorten my link' }).click();
+  await page.getByRole('button', { name: 'Snip my link' }).click();
   const open = page.getByRole('link', { name: 'Open link' });
   await expect(open).toBeVisible();
   expect((await open.getAttribute('href')).length).toBeGreaterThan('https://x.co'.length);

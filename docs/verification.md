@@ -14,6 +14,18 @@ The current Maven `verify` run passed with 56 backend checks and no failures or 
 
 `mvn test` runs the first 55 checks. `mvn verify` also builds the executable JAR and runs the restart integration check. GitHub's existing backend workflow invokes `verify`, so it includes that check automatically on the next hosted run.
 
+## Whimsical scissors UI — 24 October 2026
+
+Replaced the descriptive landing page and three-step section with a compact, icon-rich tool inspired by Amanda's scissors reference. The illustration is original SVG code, with soft blue browser chrome, cream background, rounded type, and a character holding oversized scissors. No new dependencies or backend changes were introduced.
+
+- Component/API-client tests: 28 passed (11 component and 17 API-client cases).
+- Frontend production build: passed.
+- Isolated Chrome browser checks: 10 passed, covering 320/360/390/768/1280px widths, 844×390 landscape, expanded original-destination wrapping, keyboard submission, clipboard denial, animation replay, immediate availability of fast API results during animation, and reduced motion.
+- Real-backend browser checks: 2 passed against an isolated in-memory H2 database on port 8081. Verified creation, clipboard contents, exact redirect Location without following it, and the existing policy allowing generated output longer than its input.
+- Refreshed and visually inspected `screenshots/landing-desktop.png` and `screenshots/result-mobile.png`.
+
+The finite 1.1-second cutting scene uses CSS transforms/opacity and replays per submit. It does not delay requests or results, has no idle loop, and respects reduced motion. The SVG is memoized to avoid redraws for typing/clipboard state. No frame-rate or real-device smoothness benchmark is claimed; actual-phone, Safari, zoom, and screen-reader reviews remain manual items. Security and performance checks remain deferred.
+
 ## Store-as-submitted policy — 24 October 2026
 
 At Amanda's request, removed destination validation, whitespace trimming, and output-length comparison from the backend and matching frontend checks. The application assumes submitted strings are valid; it has never fetched websites to check existence. Configuration, generated-code integrity, and JSON parsing checks remain.
