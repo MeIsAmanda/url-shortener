@@ -31,6 +31,60 @@ class SequenceMigrationTest {
     }
 
     @Test
+    void snowflakeUpgradeReservesAllOldAliasesAndKeepsExistingMetadata() {
+        var source = dataSource("snowflake-upgrade");
+        Flyway.configure().dataSource(source).locations("classpath:db/migration").target("4").load().migrate();
+        var jdbc = new JdbcTemplate(source);
+        jdbc.update("INSERT INTO user_accounts(google_subject, display_name, created_at) VALUES ('owner', 'Amanda', CURRENT_TIMESTAMP)");
+        Long owner = jdbc.queryForObject("SELECT id FROM user_accounts WHERE google_subject='owner'", Long.class);
+        long occupiedCodeId = (2000L << 22) | 123;
+        String alias = new Base62Encoder().encode(occupiedCodeId);
+        jdbc.update("INSERT INTO short_links(id, code, original_url, created_at, owner_id, click_count) "
+                + "VALUES (10, ?, 'https://example.com/old', CURRENT_TIMESTAMP, ?, 7)", alias, owner);
+        jdbc.update("INSERT INTO short_links(id, code, original_url, created_at) "
+                + "VALUES (11, '0000001', 'https://example.com/leading-zero', CURRENT_TIMESTAMP)");
+        jdbc.execute("ALTER SEQUENCE short_link_id_seq RESTART WITH 1000000");
+        migrate(source);
+        assertEquals(occupiedCodeId, jdbc.queryForObject("SELECT legacy_id_floor FROM snowflake_settings", Long.class));
+        assertEquals(SnowflakeLinkIdAllocator.EPOCH_MILLIS, jdbc.queryForObject("SELECT epoch_millis FROM snowflake_settings", Long.class));
+        assertEquals(1024L, jdbc.queryForObject("SELECT COUNT(*) FROM snowflake_workers", Long.class));
+        assertEquals(owner, jdbc.queryForObject("SELECT owner_id FROM short_links WHERE code=?", Long.class, alias));
+        assertEquals(7L, jdbc.queryForObject("SELECT click_count FROM short_links WHERE code=?", Long.class, alias));
+        var clock = new SnowflakeLinkIdAllocatorTest.MutableClock(2000);
+        var store = new SnowflakeTimestampStore(jdbc);
+        var generator = new SnowflakeLinkIdAllocator(store, 0, clock, () -> clock.elapsed++);
+        long newId = generator.nextId();
+        assertTrue(newId > occupiedCodeId);
+        assertNotEquals(alias, new Base62Encoder().encode(newId));
+        var reopened = new JdbcTemplate(dataSource("snowflake-upgrade"));
+        assertEquals(3000L, reopened.queryForObject("SELECT reserved_until_millis FROM snowflake_workers WHERE worker_id=0", Long.class));
+        assertEquals("https://example.com/old", reopened.queryForObject("SELECT original_url FROM short_links WHERE code=?", String.class, alias));
+        assertEquals("https://example.com/leading-zero", reopened.queryForObject("SELECT original_url FROM short_links WHERE code='0000001'", String.class));
+    }
+
+    @Test
+    void snowflakeFloorAlsoIncludesAllocatedButUninsertedSequenceIds() {
+        var source = dataSource("consumed-range");
+        Flyway.configure().dataSource(source).locations("classpath:db/migration").target("4").load().migrate();
+        var jdbc = new JdbcTemplate(source);
+        jdbc.execute("ALTER SEQUENCE short_link_id_seq RESTART WITH 9000000000");
+        migrate(source);
+        assertEquals(8_999_999_999L, jdbc.queryForObject("SELECT legacy_id_floor FROM snowflake_settings", Long.class));
+        assertEquals(9_000_000_000L, new DatabaseLinkIdAllocator(jdbc).nextId());
+    }
+
+    @Test
+    void snowflakeMigrationRejectsAnExhaustedLegacyRangeWithoutChangingItsMapping() {
+        var source = dataSource("snowflake-exhausted");
+        Flyway.configure().dataSource(source).locations("classpath:db/migration").target("4").load().migrate();
+        var jdbc = new JdbcTemplate(source);
+        jdbc.update("INSERT INTO short_links(id, code, original_url, created_at) "
+                + "VALUES (?, 'AzL8n0Y58m7', 'https://example.com/last', CURRENT_TIMESTAMP)", Long.MAX_VALUE);
+        assertThrows(org.flywaydb.core.api.FlywayException.class, () -> migrate(source));
+        assertEquals("https://example.com/last", jdbc.queryForObject("SELECT original_url FROM short_links WHERE id=?", String.class, Long.MAX_VALUE));
+    }
+
+    @Test
     void freshDatabaseStartsAtOneAndStartupDoesNotResetTheSequence() {
         var source = dataSource("fresh");
         migrate(source);

@@ -1,16 +1,28 @@
 # Project verification
 
-The Google-account/redirect-count checks were run on 25 October 2026 with Java 25/Spring Boot 4.1.2, Node 20.19.5, and installed headless Chrome. Earlier milestones retain their original results and policies. No hosted GitHub CI result or real Google-provider login is claimed.
+The Snowflake/Base62 revision was checked on 25 October 2026 with Java 25/Spring Boot 4.1.2, Node 20.19.5, and installed headless Chrome. Earlier milestones retain their original results and policies. No hosted GitHub CI result or real Google-provider login is claimed.
 
 ## Latest recorded results
 
 | Check | Result | Boundary |
 | --- | --- | --- |
-| Backend Maven verify | 136 passed: 135 account/security/validator/unit/API/migration cases plus 1 packaged restart check | Isolated databases; executable JAR built; account tests use OIDC test principals |
-| Frontend tests | 148 passed across 7 files | Includes account UI/API, logout/session expiry/late response cleanup, and the existing suites |
-| Frontend production build | Passed | Includes account UI, offline IANA snapshot, and guest history |
-| Isolated Chrome browser suite | 36 passed | Account UI uses stubbed sessions/history; responsive guest behavior, scroll containment, clipboard, and animation checks remain covered |
-| Live Chrome browser suite | 4 passed | Real guest API/clipboard/redirect, history/validation, session metadata, private-history rejection, expired-account creation protection, and CSRF logout enforcement |
+| Backend Maven verify | 156 passed: 155 allocator/account/security/validator/unit/API/migration cases plus 1 packaged restart check | Snowflake revision; isolated databases; executable JAR built; account tests use OIDC test principals |
+| Frontend tests | 148 passed across 7 files in the preceding Google-account milestone | Not rerun for this allocator-only change; no frontend implementation changes were needed |
+| Frontend production build | Passed again for Snowflake revision | Builds the existing UI with the user's current page edit |
+| Isolated Chrome browser suite | 36 passed in the preceding Google-account milestone | Not rerun for this allocator-only change; account UI uses stubbed sessions/history |
+| Live Chrome browser suite | 4 passed again against the Snowflake backend | Real guest API/clipboard/redirect, history/validation, session metadata, private-history rejection, expired-account creation protection, and CSRF logout enforcement |
+
+## Snowflake IDs and Base62 — 25 October 2026
+
+Replaced production sequence allocation with a 41/10/12-bit Snowflake generator. The fixed epoch is 25 October 2026 00:00 Asia/Singapore (24 October 16:00 UTC). SNOWFLAKE_WORKER_ID defaults to 0 and accepts 0–1023. Base62 and the public API remain unchanged. V5 preserves mappings and records the legacy ID floor, epoch, and worker timestamp reservations. Most allocation uses memory within up-to-one-second reservations; new reservations use an independent database transaction. This is not a fully database-independent ID service or a completed distributed deployment.
+
+The final Maven verify passed 155 Surefire cases plus one Failsafe packaged restart case. Twenty new cases cover the fixed epoch and bit layout, worker bounds and identity separation, same-millisecond counters and overflow waiting, clock rollback/recovery, timestamp/lifetime bounds, Base62 length, reservation failures/renewal/restart waiting, concurrent same-worker reservations, independently committed reservations surviving an outer mapping rollback, epoch mismatch, legacy floor enforcement, and V5 legacy upgrade/exhaustion behavior. API creation asserts a current Snowflake timestamp and configured worker 11; the packaged crash/restart test checks persisted redirects, a later timestamp, and worker 7. Existing 48-request creation and click-counter concurrency checks also passed. These are correctness checks, not load tests.
+
+V5 file-backed migration/reopen cases preserve old aliases (including leading zeros), destinations, owners, counters, epoch, and worker reservations, and include previously consumed sequence IDs in the floor. The old sequence helper now lives only under test sources for historical V2 checks. No existing migration was edited. The assistant did not open or migrate the development database.
+
+The frontend build and all four live Chrome cases passed against an isolated in-memory packaged backend on port 8081, using worker 13 and Google login disabled. The backend and preview were stopped afterward. External destination redirects were not followed. Frontend component and isolated browser suites retain their preceding results and were not rerun. Existing screenshots show earlier code formats and were not refreshed.
+
+Implementation and setup are in [snowflake.md](snowflake.md). Back up the stopped development database before first V5 launch. Actual multi-instance deployment, independent-machine clock/failover behavior, power-loss durability, load tests, security scans, hosted CI, real Google login, and actual-phone review remain unverified. No throughput improvement or random-looking public-code guarantee is claimed.
 
 ## Google accounts and click counts — 25 October 2026
 

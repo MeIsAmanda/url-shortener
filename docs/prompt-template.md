@@ -11,7 +11,7 @@ Act as a senior full stack engineer helping me learn.
 I am building Sniply, a URL shortener for a technical assessment.
 
 - Backend: Java 25, Spring Boot, H2.
-- Link IDs: database sequence followed by Base62 encoding; Flyway migrations preserve legacy aliases.
+- Link IDs: Snowflake (41 timestamp / 10 worker / 12 counter bits) followed by Base62; fixed epoch 25 October 2026 00:00 Asia/Singapore. V5 preserves legacy aliases and persists worker timestamp reservations. Configure distinct SNOWFLAKE_WORKER_ID values for multiple instances. See [snowflake.md](snowflake.md).
 - Frontend: React with Vite, JavaScript, and CSS; a responsive scissors-themed page with a short submission animation and native pixel-art cursor.
 - Recent snips: latest 20 successful links in localStorage, beside the tool on desktop and below it on smaller screens. History removal does not delete backend mappings. See [recent-snips.md](recent-snips.md).
 - Accounts: optional Google OAuth2/OIDC sign-in, server sessions/CSRF, V4 account ownership, paginated My links with creation dates and atomic GET redirect counts. Guest history is separate; anonymous links are not auto-claimed. See [accounts.md](accounts.md).

@@ -110,7 +110,7 @@ Windows PowerShell:
 
 Service tests use mocks, API tests use an isolated in-memory H2 database, and migration tests use temporary file databases. They do not modify saved development links. The Mockito subclass mock maker is configured because these tests only mock interfaces and non-final classes; it avoids requiring runtime Java agent attachment.
 
-Run `.\mvnw.cmd verify` on Windows (or `./mvnw verify` on macOS/Linux) for the complete backend check: 135 account/security/validator/unit/API/migration cases, executable JAR packaging, and one packaged-application restart test. The restart test starts and stops its own backend processes using a temporary H2 file and an available port. Migration tests also use temporary files; no development data is opened.
+Run `.\mvnw.cmd verify` on Windows (or `./mvnw verify` on macOS/Linux) for the complete backend check: allocator/account/security/validator/unit/API/migration cases, executable JAR packaging, and one packaged-application restart test. The restart test starts and stops its own backend processes using a temporary H2 file and an available port. Migration tests also use temporary files; no development data is opened. Current recorded counts are in [verification.md](docs/verification.md).
 
 From `frontend/`:
 
@@ -146,6 +146,7 @@ The workflow is prepared; confirm the latest revision's results in GitHub after 
 | --- | --- | --- |
 | PORT | 8080 | Listening port |
 | PUBLIC_BASE_URL | http://localhost:8080 | Origin included in generated links |
+| SNOWFLAKE_WORKER_ID | 0 | Unique generator identity, 0–1023; use distinct IDs for multiple instances |
 | DATABASE_URL | jdbc:h2:file:./data/shortener | Database connection |
 | DATABASE_USERNAME | sa | Database username |
 | DATABASE_PASSWORD | empty | Local development database password |
@@ -180,7 +181,7 @@ The empty database password is for a local demonstration. Configure credentials 
 - Repeated submissions create new mappings.
 - Signed-in creation uses server-verified Google identity for ownership and requires CSRF protection. Guests can still create unowned mappings. Session/account responses use no-store; sign-out does not delete links.
 - Public GET redirects increment a database counter atomically, including repeats and bots; HEAD/unknown-code requests do not. Counts start at zero on upgrade and are not unique-human analytics. Redirects use no-store.
-- New links use a positive database-sequence ID encoded as Base62 (`0–9`, `A–Z`, `a–z`). Codes are case-sensitive, unpadded, and 1–11 characters long. A fresh database starts with `1`; existing databases may start higher to preserve old links.
+- New links use a positive Snowflake ID encoded as Base62 (`0–9`, `A–Z`, `a–z`). The fixed epoch is 25 October 2026 at midnight Singapore time. Codes are case-sensitive, unpadded, and at most 11 characters; their length grows with elapsed time. Fresh databases no longer start at code `1`. See [Snowflake design and configuration](docs/snowflake.md).
 - Validation happens before ID allocation; invalid URLs consume no ID. Failures after allocation can leave gaps; allocated IDs are not recycled. Database failures are returned as server errors rather than retried as code collisions.
 - The database retains both primary-key and code uniqueness constraints. Existing seven-character aliases keep their stored destinations, including aliases with leading zeros.
 
@@ -194,6 +195,8 @@ V1 adopts the original table. V2 expands the code column to 11 characters, remov
 
 V4 adds accounts, optional link ownership, click counters defaulting to zero, and an owner/history index. Existing mappings remain unowned and keep their codes/destinations/dates. Accounts, owned links, and counters persist in H2; session state is in backend memory, so a restart requires signing in again. Back up the stopped database before its first V4 startup.
 
+V5 preserves all mappings and reserves Snowflake IDs above existing primary keys, alias values, and consumed sequence IDs. It adds a persisted epoch and per-worker timestamp reservations for crash/restart safety. The old sequence remains historical state. Generation normally uses memory inside a reservation, with a database transaction when reserving a new window. A restart may wait about one second; clock rollback or an unsafe legacy allocation floor fails creation rather than reusing IDs. Back up the stopped database before its first V5 startup; keep all allocator state with its mappings.
+
 The current implementation uses embedded H2. It does not establish multi-instance capacity, and sequential codes can be guessed. The ID-source interface can support a future shared database, but that requires a tested deployment and allocator implementation. See [backend-design.md](docs/backend-design.md) for the flow, tradeoffs, and corrections to the Copilot analysis.
 
 ## Code walkthrough
@@ -202,11 +205,11 @@ Read these files in order under `backend/src/main/java/com/amanda/urlshortener/`
 
 1. `link/ShortLinkController.java`: HTTP endpoints.
 2. `link/ShortLinkService.java` and `link/UrlValidator.java`: validation before allocation, encoding, exact accepted-URL storage, and resolution.
-3. `link/LinkIdAllocator.java`, `DatabaseLinkIdAllocator.java`, and `Base62Encoder.java`: ID-source boundary and compact encoding.
+3. `link/LinkIdAllocator.java`, `SnowflakeLinkIdAllocator.java`, `SnowflakeTimestampStore.java`, and `Base62Encoder.java`: allocation, durable timestamp reservations, and compact encoding.
 4. `link/ShortLink.java` and `ShortLinkRepository.java`: assigned IDs, database mapping, and lookup.
 5. `web/ApiExceptionHandler.java`: client-facing errors.
 
-Then read the five validator/unit/API/migration test classes and `ShortLinkRestartIT` under `src/test/java/`, followed by the migrations under `src/main/resources/db/migration/` and `src/main/java/db/migration/`. Validator tests share input fixtures with the frontend; service tests isolate database behavior; API tests exercise real H2 and Spring; migration tests verify file-backed legacy data; the packaged test verifies persistence after an immediate process stop.
+Then read the allocator, validator, service, API, account, and migration tests and `ShortLinkRestartIT` under `src/test/java/`, followed by the migrations under `src/main/resources/db/migration/` and `src/main/java/db/migration/`. Validator tests share input fixtures with the frontend; allocator tests control the clock; migration tests verify file-backed legacy data; the packaged test verifies persistence after an immediate process stop. `DatabaseLinkIdAllocator` now exists only as a historical sequence-migration test helper.
 
 ## Next milestones
 
@@ -223,7 +226,8 @@ Local screenshots: [desktop landing page](docs/screenshots/landing-desktop.png),
 | Document | Purpose |
 | --- | --- |
 | [Project plan](docs/project-plan.md) | Scope, current implementation, and remaining milestones |
-| [Backend design](docs/backend-design.md) | Sequence/Base62 flow, persistence, migrations, and design tradeoffs |
+| [Backend design](docs/backend-design.md) | Snowflake/Base62 flow, persistence, migrations, and design tradeoffs |
+| [Snowflake IDs](docs/snowflake.md) | Fixed epoch, worker configuration, timestamp reservations, code length, and upgrade safety |
 | [URL validation](docs/url-validation.md) | Accepted formats, length limit, TLD snapshot, and availability policy |
 | [Recent snips](docs/recent-snips.md) | Browser history, localStorage, layout, clearing, and persistence limits |
 | [Google accounts](docs/accounts.md) | OAuth setup, private account history, creation dates, click definitions, and verification limits |

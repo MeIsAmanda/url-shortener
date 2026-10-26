@@ -1,6 +1,6 @@
 # AI usage and learning notes
 
-The current implementation is Sniply: Java 25/Spring Boot, React, a database sequence followed by Base62 encoding, and Flyway migrations. As of 25 October 2026, new destinations must pass the [URL validation policy](url-validation.md), including HTTP(S), domain/TLD, encoding, and a 2,048-character maximum. Accepted URLs are stored unchanged, without an output-length requirement. See [prompt-template.md](prompt-template.md) for reusable context.
+The current implementation is Sniply: Java 25/Spring Boot, React, Snowflake IDs followed by Base62 encoding, and Flyway migrations. The fixed epoch is 25 October 2026 00:00 Asia/Singapore; V5 preserves legacy aliases and persists worker timestamp reservations. See [snowflake.md](snowflake.md). New destinations must pass the [URL validation policy](url-validation.md), including HTTP(S), domain/TLD, encoding, and a 2,048-character maximum. Accepted URLs are stored unchanged, without an output-length requirement. See [prompt-template.md](prompt-template.md) for reusable context.
 
 ## Prompt structure
 
@@ -12,9 +12,9 @@ Example prompt:
 
 ## Current decisions to review
 
-- The database sequence allocates an ID before the row is inserted; allocation alone does not create a mapping.
+- Snowflake combines elapsed milliseconds, worker identity, and a counter before insertion; allocation alone does not create a mapping. Timestamp reservations survive crashes; the previous database sequence is historical state.
 - Base62 encodes that ID; the database still enforces primary-key and code uniqueness. Current codes have variable length, not a fixed seven characters.
-- Allocator/insert failures propagate without a collision retry loop. Sequence gaps are expected and do not represent saved link rows.
+- Allocator/insert failures propagate without a collision retry loop. Unused IDs and skipped reserved timestamps are expected and do not represent saved link rows.
 - Generated links use configured PUBLIC_BASE_URL instead of the request Host header.
 - New destinations are validated before allocation with a 2,048-character limit. Accepted strings are preserved, and generated links may be longer than the input. Validation does not prove website availability or safety.
 - Flyway migrations preserve existing aliases; file-based H2 data must be backed up with the backend stopped.

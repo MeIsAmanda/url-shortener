@@ -1,6 +1,6 @@
-# Sequence IDs and Base62 codes
+# Snowflake IDs and Base62 codes
 
-This revision replaces the random code generator with a database sequence and a separate encoder. The API and frontend contract remain `POST /api/urls` with `originalUrl` and `GET /s/{code}` for redirects.
+As of 25 October 2026, new links use Snowflake IDs with a fixed epoch of 25 October 2026 00:00 Asia/Singapore, followed by the existing Base62 encoder. This supersedes the database sequence allocator introduced on 24 October. The API and frontend contract remain `POST /api/urls` with `originalUrl` and `GET /s/{code}` for redirects. See [snowflake.md](snowflake.md) for the format, durable timestamp reservations, worker configuration, and failure behavior.
 
 ## Current destination policy
 
@@ -22,9 +22,9 @@ Controller
 
 The allocated ID is the new row's primary key. No random generator, existence query, or collision retry is needed in the normal creation path. The primary key and code unique constraint still reject integrity violations; the service does not hide them or claim success before persistence.
 
-Allocation reserves a number, not an empty row. `DatabaseLinkIdAllocator` obtains the next sequence value, and `saveAndFlush` inserts the mapping afterward. A failed insert can leave a skipped number without leaving a saved mapping. It may still incur database/log work; gaps do not mean that blank link rows accumulate.
+Allocation produces a number, not an empty row. `SnowflakeLinkIdAllocator` combines elapsed milliseconds, worker identity, and a per-millisecond counter. `SnowflakeTimestampStore` durably reserves up to one second of timestamps per worker when needed; generation within a window uses memory. `saveAndFlush` inserts the mapping afterward. A failed insert can leave an unused ID without leaving a saved mapping. It may still incur database/log work; gaps do not mean that blank link rows accumulate.
 
-Examples with the fixed alphabet `0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz`:
+The encoder still uses the fixed alphabet `0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz`. These examples explain numeric encoding; fresh Snowflake databases do not issue small sequential IDs starting at 1:
 
 | ID | Code |
 | ---: | --- |
@@ -36,12 +36,13 @@ Examples with the fixed alphabet `0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghij
 | 62 | `10` |
 | 1,000,000 | `4C92` |
 
-Codes grow as numbers grow, up to 11 characters for a positive Java long. There is no fixed seven-character promise. The numeric ID is increasing at allocation, but concurrent requests can finish in a different order. Base62 text also does not sort in numeric order across digit-length boundaries.
+Codes grow as numbers grow, up to 11 characters for a positive Java long. There is no fixed seven-character promise. With Snowflake, code length grows with elapsed time; the classic layout needs nine Base62 characters after one day. IDs increase within a worker, but concurrent workers/requests can finish in a different order. Base62 text also does not sort in numeric order across digit-length boundaries.
 
 ## Responsibilities
 
 - `LinkIdAllocator`: interface separating the service from the ID source.
-- `DatabaseLinkIdAllocator`: asks H2 for `NEXT VALUE FOR short_link_id_seq`; it has no local counter and never computes `MAX(id) + 1` during requests.
+- `SnowflakeLinkIdAllocator`: fixed epoch, 41/10/12-bit assembly, per-process synchronized counter, clock/lifetime checks, and bounded rollover/restart waiting.
+- `SnowflakeTimestampStore`: independently committed, row-locked timestamp windows in H2, persisted epoch checks, and the legacy ID floor. This avoids reissuing timestamps after a process crash. The old `DatabaseLinkIdAllocator` exists only as a sequence-migration test helper.
 - `Base62Encoder`: converts an integer to a compact string without truncation, hashing, randomness, or database access.
 - `UrlValidator`: creation-time format, length, and bundled-TLD checks without contacting the destination.
 - `ShortLinkService`: validation, allocation, encoding, verbatim persistence of accepted values, and lookup.
@@ -63,9 +64,9 @@ H2 is the embedded relational database used by this project. The default `jdbc:h
 
 For a local backup, stop the backend and copy the whole `backend/data/` directory to a separate location. Restore that stopped database together with a compatible application version; do not combine mappings from one backup with allocator state from another. These local data files are ignored by Git, so committing the source does not back up saved links. A custom `DATABASE_URL` may store data elsewhere.
 
-H2 sequence values are not returned after rollback. An insert failure can consume an ID without creating a row. Gaps are intentional. The sequence does not cycle: exhaustion causes failure, not reuse. [H2 sequence commands](https://www.h2database.com/html/commands.html#create_sequence), [sequence expression semantics](https://www.h2database.com/html/grammar.html#sequence_value_expression).
+Snowflake reservations commit independently of link insertion. Failed inserts leave gaps, and restarts skip unused portions of the previous window. Clock rollback and exhausted timestamps fail rather than reuse IDs. The previous V2 H2 sequence also preserved gaps after rollback; it remains historical database state and is no longer used for new links. [H2 sequence expression semantics](https://www.h2database.com/html/grammar.html#sequence_value_expression).
 
-Do not reset or recreate the sequence on normal startup, manually reuse IDs, or copy independent databases into a common code namespace without a migration strategy. A future shared database must preserve allocator state with the mappings, including through failover and restore.
+Do not reset the epoch or worker reservations, manually reuse IDs, or copy independent databases into a common code namespace without a migration strategy. Preserve allocator state together with mappings through backup, restore, and failover. Every independent generator needs a distinct worker identity. Local H2 reservation locking is not a cross-database worker registry.
 
 The application configures Hikari's connection initialization SQL to `SET WRITE_DELAY 0`. H2's default is a 500 ms delay between committing and flushing the log; an abrupt stop immediately after a successful response exposed that window during verification. The explicit setting also applies when a custom H2 `DATABASE_URL` is supplied. It removes the configured delay, with a potential write-latency cost that has not been benchmarked. Hardware/power-loss durability is outside these checks. This setting is H2-specific and must be revisited with a different database. [H2 write-delay setting](https://www.h2database.com/html/commands.html#set_write_delay).
 
@@ -73,7 +74,9 @@ Spring Data's normal new-entity detection treats non-null IDs as existing withou
 
 ## Existing database compatibility
 
-V1, V2, and V3 are ordered schema revisions applied to the same database, not separate database servers. V3 runs after the ID migration described below and widens only the destination column. Existing destinations are retained, with no trimming or reallocation.
+V1–V5 are ordered revisions applied to the same database, not separate servers. V3 widens the destination column; V4 adds accounts/counters. V5 preserves every mapping and records the fixed Snowflake epoch, safe legacy ID floor, and worker reservations. It scans row IDs and numeric alias values and includes the old sequence's consumed range, then new timestamp allocation begins above that floor. It retains the unused old sequence. An occupied future range blocks creation until safe time is available; exhausted ranges fail migration. See [Snowflake upgrade details](snowflake.md#existing-databases-and-backup).
+
+The following describes the historical V2 sequence upgrade, which is still applied before V5:
 
 The old backend used independent identity primary keys and random seven-character public codes. Simply restarting a new sequence at 1 would eventually risk colliding with an old public alias or existing row ID.
 
@@ -101,8 +104,8 @@ Spring Boot's Flyway starter provides startup integration. [Spring Boot database
 | The previous implementation just hoped random strings would not collide | Incorrect. Its database constraint enforced uniqueness and it retried conflicts. |
 | The previous implementation lacked a real service boundary | Incorrect. `ShortLinkService` already coordinated business rules; this revision makes the ID source a separate dependency. |
 | Base62 guarantees uniqueness | Only when distinct integers are encoded without truncation and allocator state is preserved. Encoding does not allocate IDs. |
-| Counter IDs are always more scalable than random IDs | Not established. This implementation removes random-code retries but adds a sequence allocation query. Coordination, storage writes, and redirect traffic still matter. |
-| All proposed ID sources offer equivalent guarantees | No. Durability, failover, worker identity, clock behavior, and coordination differ. This implementation uses H2 only. |
+| Counter IDs are always more scalable than random IDs | Not established. V2 added a per-ID sequence query; current Snowflake uses memory inside durable time windows but still requires reservation transactions. Coordination, storage writes, and redirect traffic still matter. |
+| All proposed ID sources offer equivalent guarantees | No. Durability, failover, worker identity, clock behavior, and coordination differ. Snowflake adds explicit worker/clock requirements; persistence still uses H2. |
 | This describes Bitly's exact implementation | Not verified. Bitly's public API describes the interface, not sufficient internal allocator details to make that claim. [Bitly API](https://dev.bitly.com/api-reference/) |
 
 The earlier notes about database checks also need precision: a sequence removes the need to check a candidate before insertion, but the database still enforces the unique indexes. The old implementation already avoided a pre-insert existence query.

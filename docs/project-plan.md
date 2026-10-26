@@ -13,7 +13,7 @@ Complete the required features first. Introduce basic security and a lightweight
 
 ### Current implementation and remaining work
 
-The sequence/Base62 backend, Flyway V1–V4 migrations, H2 persistence, Sniply frontend, scissors interaction, optional Google accounts, account link history/creation dates/redirect counts, tests, and GitHub Actions workflow are implemented. Google sign-in requires the user's OAuth client configuration and a real-provider manual check. Recorded local results are in [verification.md](verification.md); they do not establish user review or hosted CI completion.
+The Snowflake/Base62 backend, Flyway V1–V5 migrations, H2 persistence, Sniply frontend, scissors interaction, optional Google accounts, account link history/creation dates/redirect counts, tests, and GitHub Actions workflow are implemented. The fixed Snowflake epoch is 25 October 2026 00:00 Asia/Singapore. Google sign-in requires the user's OAuth client configuration and a real-provider manual check. Recorded local results are in [verification.md](verification.md); they do not establish user review or hosted CI completion.
 
 Next: review the code and test assertions, check the UI on an actual phone, and confirm the latest GitHub checks. Security scanning/hardening and performance measurements remain deferred to their own milestones. Finish with a clean-checkout check and submission review. Keep the final checklist unchecked until its complete requirement has been confirmed.
 
@@ -45,7 +45,7 @@ Accepted destinations are stored verbatim after syntax validation. Format/TLD va
 | Styling | CSS | Sufficient for a polished responsive single page |
 | Backend | Spring Boot with Maven wrapper | Demonstrates Java API and backend skills |
 | Persistence | File-based H2 with Spring Data JPA | Simple local setup and persistence across restarts |
-| Link IDs | Shared H2 sequence followed by Base62 encoding | Distinct allocated numbers and compact variable-length public codes |
+| Link IDs | Snowflake followed by Base62 encoding | Timestamp/worker/counter IDs; fixed epoch and durable worker timestamp windows |
 | Schema changes | Flyway migrations; Hibernate schema validation | Explicit upgrades that retain existing development links |
 | Backend tests | JUnit and Mockito | Test rules independently of the database |
 | API integration tests | Spring test support with a separate test database | Verify HTTP behaviour and persistence together |
@@ -60,7 +60,7 @@ Use supported stable releases compatible with each other and document the actual
 1. User opens the landing page and enters a long URL.
 2. React submits it to the backend.
 3. Backend validates the submitted URL before ID allocation; invalid values return 400 INVALID_URL. Accepted input is not trimmed or rewritten.
-4. A database-backed allocator obtains a unique positive integer from the shared H2 sequence; a separate Base62 encoder converts it to a compact code.
+4. A Snowflake allocator combines elapsed milliseconds, configured worker identity, and a counter into a positive integer; a separate Base62 encoder converts it to a compact code. Persisted timestamp reservations protect restarts.
 5. Service constructs the generated URL from the configured public base URL without comparing lengths.
 6. Database stores the allocated ID, code, original destination, and timestamp. The primary key and code uniqueness constraint remain authoritative.
 7. UI displays the result with Open and Copy actions.
@@ -81,7 +81,7 @@ Use a consistent JSON error structure, such as code and message. Display a frien
 
 ### Data model
 
-- id: positive BIGINT allocated from a database sequence before insertion; the primary key.
+- id: positive BIGINT assembled by the Snowflake allocator before insertion; the primary key. Existing IDs remain unchanged.
 - code: Base62 encoding of the allocated ID for new links, with a database unique constraint and indexed lookup. Existing legacy aliases retain their original values.
 - originalUrl: saved destination.
 - createdAt: creation timestamp.
@@ -91,24 +91,24 @@ Use a consistent JSON error structure, such as code and message. Display a frien
 - Controller: request and response handling.
 - Service: validate before coordinating ID allocation, encoding, verbatim destination storage, and lookups.
 - UrlValidator: enforce the documented format/TLD/length policy using a bundled IANA snapshot, with no DNS or HTTP lookup.
-- LinkIdAllocator: the ID-source boundary; DatabaseLinkIdAllocator uses the shared H2 sequence.
+- LinkIdAllocator: the ID-source boundary; SnowflakeLinkIdAllocator uses the fixed epoch, configured worker ID, and counter. SnowflakeTimestampStore persists independent timestamp reservations.
 - Base62Encoder: deterministic integer encoding using 0–9, A–Z, and a–z; no database access or randomness.
 - Repository: database access.
 - DTOs: request and response shapes.
 - Exception handler: consistent errors without internal stack traces.
 - Configuration: public base URL, database settings, and allowed frontend origin when needed.
 
-### Revised ID allocation decision — 24 October 2026
+### Revised ID allocation decision — 25 October 2026
 
-Use a database sequence followed by Base62 encoding, replacing the original random seven-character generator and retry loop. New codes are variable length (1–11 characters for positive Java longs), case-sensitive, and unpadded. Fresh databases begin at ID 1. Database failures propagate as server errors; there is no retry loop for code collisions or pre-insert existence query.
+Use Snowflake followed by Base62, replacing the database sequence allocator introduced on 24 October. The fixed epoch is 25 October 2026 00:00 Asia/Singapore (24 October 16:00 UTC). Use 41 timestamp bits, 10 worker bits, and 12 counter bits. Configure SNOWFLAKE_WORKER_ID (default 0, range 0–1023) distinctly for independent instances. Codes remain case-sensitive, unpadded, and at most 11 characters. Fresh databases no longer begin at ID 1; length grows with elapsed time. IDs remain patterned rather than random-looking.
 
 Keep the mapping table and unique constraints. Redirects look up the exact stored code rather than decoding it, so legacy links, including leading-zero aliases, remain usable. Keep the current HTTP endpoints and JSON response shapes.
 
-Flyway now owns versioned H2 schema changes; Hibernate validates the schema instead of modifying it. V1 adopts the original table; V2 widens the code column, replaces identity-column allocation with a named sequence, and starts it above both all existing primary keys and the numeric values of all legacy codes. The one-time scan prevents overlap with old aliases. Migration history and sequence state survive restarts; never reset a live sequence. Back up the stopped file database before its first migrated launch. This migration supports the original seven-character legacy schema, not arbitrary custom schemas.
+Flyway owns schema changes and Hibernate validates them. V1–V4 remain unchanged. V5 reserves new IDs above existing primary keys, numeric alias values, and consumed V2 sequence IDs, and stores the epoch and 1,024 worker reservation rows. Keep the unused old sequence as historical state. Back up the stopped database before first V5 startup. Existing aliases, destinations, owners, dates, and counters are preserved. If the safe legacy floor is ahead of the current clock, creation fails until safe time is available rather than reusing IDs.
 
-This is a database-coordinated design, not a claim that the application reproduces Bitly's internal implementation or is already distributed. The existing backend already had a service boundary and database-enforced uniqueness. Random generation with a unique constraint can also scale. Base62 supplies compact representation; the sequence supplies unique numbers. Increasing allocated IDs need not produce completion-ordered responses. Invalid destinations are rejected before allocation; failed inserts or rollbacks after allocation can leave gaps.
+SnowflakeTimestampStore independently commits up to one second of reserved timestamps per worker using a row lock. Most generation inside a window uses memory; startup/renewal needs a database transaction. A restarted generator skips the prior window and may wait about one second. Reject clock rollback, an invalid epoch, worker IDs outside the supported range, or timestamp exhaustion. Counter rollover waits for a new millisecond with a bounded timeout. Base62 provides representation, while correct worker/clock/state management supplies distinct numbers. Invalid destinations are rejected before allocation; failed inserts can leave gaps. See [snowflake.md](snowflake.md).
 
-Sequential public codes are enumerable. They are not credentials or authorization. Private account history has separate authentication, while redirects remain public. Embedded H2 is still a single-instance assessment choice; multiple backend instances would need tested shared database/session infrastructure. Basic redirect counts are implemented; Redis, Snowflake, coordination services, detailed visitor analytics, expiry, and status management remain outside this change. No performance improvement is claimed until measured. See [backend design](backend-design.md).
+Public codes are enumerable and do not supply authorization. Private account history has separate authentication, while redirects remain public. Embedded H2 is still a single-instance assessment choice; multiple backend instances need distinct worker IDs and tested database/session infrastructure. This change does not create shards, a worker registry, or a distributed deployment. Basic redirect counts are implemented; Redis, detailed visitor analytics, expiry, and status management remain outside this change. No performance improvement is claimed until measured. See [backend design](backend-design.md).
 
 Configure H2 connections with `SET WRITE_DELAY 0` so committed writes do not retain the default 500 ms flush delay. Include an immediate-stop/restart smoke check with an isolated file database. This is a persistence correctness check, not a performance test or a power-loss durability guarantee.
 
@@ -254,6 +254,7 @@ Time budget: about 60 to 90 minutes for a useful initial script and report; deep
 - Rejection of missing schemes, invalid domains/TLDs, whitespace/controls, malformed escapes, null/empty input, and over-limit input before ID allocation or insertion.
 - Acceptance at exactly 2,048 characters and rejection at 2,049; existing over-limit mappings still redirect.
 - Base62 known values, digit-length boundaries, negative input rejection, and the full positive-long range.
+- Snowflake epoch/bit layout, distinct workers/counters, counter rollover, clock rollback, worker/lifetime bounds, reservation renewal, and failures.
 - Store the allocated ID, its encoding, and the unmodified submitted destination.
 - Allocator and insert failures propagate without retries or false success.
 - Known-code lookup and unknown-code behaviour.
@@ -265,9 +266,9 @@ Time budget: about 60 to 90 minutes for a useful initial script and report; deep
 - Invalid requests return consistent errors.
 - Database uniqueness is enforced.
 - Concurrent creation produces distinct IDs/codes; duplicate assigned IDs cannot overwrite existing destinations.
-- Fresh and legacy H2 schemas migrate correctly; aliases and sequence state survive database reopen.
-- Rolled-back allocations are not reused and exhausted sequences fail instead of cycling.
-- Packaged-application restart check runs after JAR creation during `mvn verify`: stop the process immediately after a successful POST, restart with the same temporary file database, and verify the saved redirect and advancing sequence.
+- Fresh and legacy H2 schemas migrate correctly; aliases, ownership/counters, and Snowflake state survive database reopen. Historical V2 sequence behavior remains covered.
+- V5 reserves old IDs, alias values, and consumed sequence IDs. Committed timestamp windows do not overlap, including simultaneous reservations and generator restarts.
+- Packaged-application restart check runs after JAR creation during `mvn verify`: stop immediately after a successful POST, restart with the same temporary file database, and verify the saved redirect, configured worker, and later Snowflake timestamp.
 - Separate test database does not modify local development data.
 
 ### Frontend tests and manual checks

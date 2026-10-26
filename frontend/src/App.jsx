@@ -112,7 +112,6 @@ export default function App() {
           sniply<span className="wordmark-dot">.</span>
         </a>
         <div className="header-actions">
-          <span className="header-note"><Icon name="sparkles" /> a little internet magic</span>
           <AccountMenu account={account} onLogout={logout} />
         </div>
       </header>

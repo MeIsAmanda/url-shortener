@@ -20,7 +20,7 @@ class ShortLinkRestartIT {
     private final JsonMapper json = JsonMapper.builder().build();
 
     @Test
-    void acknowledgedLinkAndSequenceSurviveAnImmediateProcessStop() throws Exception {
+    void acknowledgedLinkAndSnowflakeStateSurviveAnImmediateProcessStop() throws Exception {
         int port;
         try (ServerSocket socket = new ServerSocket(0)) {
             port = socket.getLocalPort();
@@ -53,7 +53,11 @@ class ShortLinkRestartIT {
             HttpResponse<String> next = create(client, origin, original);
             assertEquals(201, next.statusCode(), next.body());
             String nextUrl = json.readValue(next.body(), CreateLinkResponse.class).shortUrl();
-            assertTrue(decodeCode(nextUrl) > decodeCode(shortUrl), "Sequence restarted or reused an ID");
+            long firstId = decodeCode(shortUrl);
+            long nextId = decodeCode(nextUrl);
+            assertTrue(nextId > firstId, "Snowflake restarted or reused an ID");
+            assertTrue((nextId >>> 22) > (firstId >>> 22), "Restart reused the previous timestamp");
+            assertEquals(7L, (nextId >>> 12) & 1023, "Configured worker was not preserved");
         } finally {
             stop(first);
             stop(restarted);
@@ -66,6 +70,8 @@ class ShortLinkRestartIT {
         return new ProcessBuilder(java.toString(), "-jar", jar.toString(),
                 "--server.port=" + port,
                 "--app.public-base-url=http://127.0.0.1:" + port,
+                "--app.snowflake.worker-id=7",
+                "--app.google.enabled=false",
                 "--spring.datasource.url=jdbc:h2:file:" + directory.resolve("links").toAbsolutePath().toString().replace('\\', '/'),
                 "--logging.level.root=WARN", "--debug=false")
             .redirectErrorStream(true).redirectOutput(log.toFile()).start();

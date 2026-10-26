@@ -24,7 +24,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(properties = {
     "spring.datasource.url=jdbc:h2:mem:shortener-sequence-api-tests;DB_CLOSE_DELAY=-1",
-    "app.public-base-url=http://localhost:8080"
+    "app.public-base-url=http://localhost:8080",
+    "app.snowflake.worker-id=11"
 })
 class ShortLinkApiTest {
     @Autowired WebApplicationContext context;
@@ -40,6 +41,7 @@ class ShortLinkApiTest {
 
     @Test
     void createsAndRedirectsToExactDestination() throws Exception {
+        long before = System.currentTimeMillis();
         String original = "https://example.com/some/long/path?campaign=assessment&x=1#section";
         var response = mvc.perform(post("/api/urls").contentType(MediaType.APPLICATION_JSON)
             .content("{\"originalUrl\":\"" + original + "\"}"))
@@ -51,6 +53,9 @@ class ShortLinkApiTest {
         assertEquals(1, repository.count());
         ShortLink saved = repository.findAll().getFirst();
         assertEquals(new Base62Encoder().encode(saved.getId()), saved.getCode());
+        long generatedAt = SnowflakeLinkIdAllocator.EPOCH_MILLIS + (saved.getId() >>> 22);
+        assertTrue(generatedAt >= before && generatedAt <= System.currentTimeMillis());
+        assertEquals(11L, (saved.getId() >>> 12) & 1023);
         assertFalse(saved.isNew());
         mvc.perform(get(URI.create(shortUrl).getPath()))
             .andExpect(status().isFound()).andExpect(header().string("Location", original));
