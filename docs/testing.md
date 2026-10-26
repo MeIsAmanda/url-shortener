@@ -1,6 +1,6 @@
 # Test review guide
 
-These automated tests were written and executed by the assistant. Amanda reported completing every item in the manual review checklist on 27 October 2026, including reviewing assertions and observing a deliberate test failure before restoring the expectation. Suite sizes describe the checked-in cases; dated automated results and user-reported manual checks are in [verification.md](verification.md).
+The automated suites were written with AI assistance. Manual review completed on 27 October 2026, including assertion review and a deliberate watch-mode failure followed by restoring the expectation. Suite sizes describe the checked-in cases; dated results and environment details are in [verification.md](verification.md).
 
 ## Suggested review order
 
@@ -39,7 +39,7 @@ From `backend/`, run `.\mvnw.cmd test` for the allocator/account/security/valida
 - Concurrent creation and redirect-count tests submit service calls through worker threads against the real database. They check distinct IDs and retained increments, rather than HTTP-server throughput or production capacity.
 - Migration reopen cases exercise temporary file databases and historical upgrade behavior. The old sequence helper is not the production allocator. `SnowflakePersistenceTest` checks the Spring-managed reservation transactions; `ShortLinkRestartIT` separately exercises an actual packaged process stop/restart.
 
-These are coverage boundaries for review, not claims that the complete application has been manually approved. No tests were changed as part of the documentation review.
+These boundaries describe the automated assertions. Manual checks are recorded separately in the completed checklist below and in [verification.md](verification.md).
 
 In Vitest tests, `expect` checks an outcome, `vi.fn()` creates a controllable substitute, and `mockResolvedValue` supplies a fake asynchronous response. React Testing Library queries elements by their accessible role and name; `userEvent` simulates interactions. In Playwright, `page.route` replaces the API only in the isolated browser suite. The live suite has no API interception.
 
@@ -124,6 +124,8 @@ The test requests the short-code route through the local proxy with `maxRedirect
 
 ## Manual review checklist
 
+Manually verified on 27 October 2026. See the [verification record](verification.md#manual-verification--27-october-2026) for scope and environment details.
+
 - [x] Read the assertions and confirm they represent the requirements.
 - [x] Run component tests in watch mode and inspect at least one failure by temporarily changing expected behavior, then restore it.
 - [x] Submit valid long/short URLs; confirm accepted encodings remain unchanged. Try a bare domain and verify https:// appears during keyboard entry/paste once the hostname contains a dot, with blur/Enter/button submission as a fallback; explicit http:// should stay unchanged. Try blank input, an unsupported scheme, whitespace, an unknown TLD, malformed escapes, and an over-limit completed URL; confirm helpful errors and correction/retry. Test a stopped backend separately.
@@ -134,7 +136,7 @@ The test requests the short-code route through the local proxy with `maxRedirect
 - [x] Create several snips, reload, and check newest-first history on desktop/mobile. Copy/remove entries and clear the list; saved backend links should still redirect. Try another tab and check the shared collection on the same frontend origin.
 - [x] Inspect the linked passing GitHub run and confirm new runs after application changes.
 - [x] Complete real Google sign-in.
-- [x] Complete the wider account review with two real Google test accounts: check owner isolation and exact redirects/count updates, then sign out/restart/sign back in. Amanda reported manual completion; the automated suites still use simulated Google identities.
+- [x] Complete the wider account review with two real Google test accounts: check owner isolation and exact redirects/count updates, then sign out/restart/sign back in.
 
 ## Workflow references
 

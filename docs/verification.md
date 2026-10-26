@@ -1,6 +1,6 @@
 # Project verification
 
-Local checks for the CI URL-validation fix were run on 26 October 2026 with Java 25/Spring Boot 4.1.2, Node 20.19.5 and 24.22.1, and installed headless Chrome on Windows. On 27 October, GitHub's API confirmed that the revised hosted workflow passed for application commit `08e53f7`, and Amanda reported manually verifying real Google sign-in. Earlier dated entries retain their historical results and policies; use the latest dated entries and [remaining verification](#remaining-verification) for current status.
+Local checks for the CI URL-validation fix were run on 26 October 2026 with Java 25/Spring Boot 4.1.2, Node 20.19.5 and 24.22.1, and installed headless Chrome on Windows. The revised hosted workflow passed for application commit `08e53f7`. Earlier dated entries retain their historical results and policies; use the latest dated entries and [remaining verification](#remaining-verification) for current status.
 
 ## Latest hosted CI result — 27 October 2026
 
@@ -10,17 +10,20 @@ for main commit `cd3a69b`.
 The workflow completed backend verification, frontend tests and builds
 on Node 20 and 24, and Chromium browser checks on Node 24.
 
-## Manual review checklist completed — 27 October 2026
+## Manual verification — 27 October 2026
 
-Amanda reported completing every item in the [manual review checklist](testing.md#manual-review-checklist). This covers assertion review and a deliberate watch-mode test failure/restoration; valid and invalid input, protocol completion, error recovery with a stopped backend, copying and redirects; keyboard-only use, an actual phone in portrait/landscape, zoom, wrapping and cursor behavior; guest history persistence, copy/removal/clearing and cross-tab sharing; GitHub checks review; and real Google sign-in with two-account isolation, redirect/count checks, logout and restart/sign-in history restoration.
+Manually verified on 27 October 2026:
 
-The checklist is now ticked based on Amanda's confirmation. This is user-reported manual verification; no device/browser models or new CI run identifiers were supplied, and the assistant did not repeat the checks or run automated suites for this documentation update. Fresh-machine startup, screen-reader review, security scans, load testing, and deployment are outside that checklist and remain separate work.
+- Test assertions and watch-mode failure/restoration.
+- Valid and invalid URL input, protocol completion, error recovery with a stopped backend, copying, and redirects.
+- Keyboard-only use, phone portrait/landscape layouts, browser zoom, long-URL wrapping, and cursor behavior.
+- Guest history persistence, copy/removal/clearing, and cross-tab sharing.
+- GitHub Actions checks.
+- Real Google sign-in, two-account isolation, redirect/count updates, and sign-out/restart/sign-in history restoration.
 
-## Manual Google sign-in confirmation — 27 October 2026
+Environment: Google Chrome and Microsoft Edge; iPhone and OnePlus phones. Exact browser versions, phone models, and OS versions were not recorded.
 
-Amanda reported that real Google sign-in is working. This records user-performed manual verification of provider sign-in, rather than an assistant-run test or a mocked OAuth identity. The assistant updated documentation only and did not repeat sign-in or run automated tests for this status update.
-
-This initial confirmation covered sign-in only. Amanda subsequently reported completing the wider manual checklist, as recorded above. Existing automated coverage is unchanged; checks outside that checklist remain separate work.
+All items in the [manual review checklist](testing.md#manual-review-checklist) are complete. Fresh-machine startup, screen-reader review, security scans, load testing, and deployment remain separate work. Automated results below retain their recorded environments and commit scope.
 
 ## Successful-snip input reset — 27 October 2026
 
@@ -47,7 +50,7 @@ The successful [Project checks run](https://github.com/MeIsAmanda/url-shortener/
 
 Refreshed and visually inspected `screenshots/history-desktop.png` at 1280×900 and `screenshots/result-mobile.png` at 390×844. Captures use the current built application, installed Chrome, a temporary in-memory backend on port 18081, a local preview on port 14173, and Google login disabled. Two guest mappings were created and shown in browser history; external destinations were not opened. Both temporary servers were stopped afterward. Development data and personal AI-use logs were untouched. This was a documentation preview/smoke check; the full test suites were not rerun and actual-device or real Google-provider verification is not implied.
 
-The follow-up documentation review compared all guides with the current configuration, allocator, ownership/history logic, test assertions, and workflow. It corrected current versus historical allocation/output policies, clarified session-cookie configuration and simulated OAuth/expiry coverage, expanded the plan's account/redirect data model and API summary, made Unix Maven commands independent of the executable bit, and made deferred scan/load work explicit. Local documentation file/image/heading links and Markdown formatting were checked. Amanda's work/time/learning log text was preserved exactly; technical clarification was added above those logs. Application code and tests were unchanged, and no full test suites or new provider/device/security/performance checks were run for this review.
+The follow-up documentation review compared all guides with the current configuration, allocator, ownership/history logic, test assertions, and workflow. It corrected current versus historical allocation/output policies, clarified session-cookie configuration and simulated OAuth/expiry coverage, expanded the plan's account/redirect data model and API summary, made Unix Maven commands independent of the executable bit, and made deferred scan/load work explicit. Local documentation file/image/heading links and Markdown formatting were checked. Personal work/time/learning log text was preserved exactly; technical clarification was added above those logs. Application code and tests were unchanged, and no full test suites or new provider/device/security/performance checks were run for this review.
 
 ## CI Punycode validation fix — 26 October 2026
 
@@ -117,7 +120,7 @@ These historical results are from the Sniply visual update below and describe th
 
 ## Pixel scissors cursor follow-up
 
-Added a native 32×32 SVG cursor for fine pointers with hover support. An earlier Chrome spot check confirmed cursor CSS on the page, links, and buttons, text editing in the input, SVG decoding, and the touch-only fallback; the frontend build passed. After Amanda requested removal of the pink/yellow fills, the handles were made transparent and the updated SVG passed XML parsing and a check that those fills were absent. Browser checks were not rerun after that final asset edit. Native cursors are not visible in the documentation screenshots.
+Added a native 32×32 SVG cursor for fine pointers with hover support. An earlier Chrome spot check confirmed cursor CSS on the page, links, and buttons, text editing in the input, SVG decoding, and the touch-only fallback; the frontend build passed. After removal of the pink/yellow fills was requested, the handles were made transparent and the updated SVG passed XML parsing and a check that those fills were absent. Browser checks were not rerun after that final asset edit. Native cursors are not visible in the documentation screenshots.
 
 ## Earlier backend automated tests — 24 October 2026
 
@@ -142,7 +145,7 @@ Removed the window caption and the sample URL graphic. The actual native text fi
 
 ## Whimsical scissors UI — 24 October 2026
 
-Replaced the descriptive landing page and three-step section with a compact, icon-rich tool inspired by Amanda's scissors reference. The illustration is original SVG code, with soft blue browser chrome, cream background, rounded type, and a character holding oversized scissors. No new dependencies or backend changes were introduced.
+Replaced the descriptive landing page and three-step section with a compact, icon-rich tool inspired by the supplied scissors reference. The illustration is original SVG code, with soft blue browser chrome, cream background, rounded type, and a character holding oversized scissors. No new dependencies or backend changes were introduced.
 
 - Component/API-client tests: 28 passed (11 component and 17 API-client cases).
 - Frontend production build: passed.
@@ -154,7 +157,7 @@ The finite 1.1-second cutting scene uses CSS transforms/opacity and replays per 
 
 ## Store-as-submitted policy — 24 October 2026
 
-At Amanda's request, removed destination validation, whitespace trimming, and output-length comparison from the backend and matching frontend checks. The application assumes submitted strings are valid; it has never fetched websites to check existence. Configuration, generated-code integrity, and JSON parsing checks remain.
+Removed destination validation, whitespace trimming, and output-length comparison from the backend and matching frontend checks. The application assumes submitted strings are valid; it has never fetched websites to check existence. Configuration, generated-code integrity, and JSON parsing checks remain.
 
 - Replaced the old validation tests with tests for exact string preservation and acceptance of blank, missing-scheme, short, and previously over-limit input.
 - Flyway V3 changes original_url to CLOB. Real API tests verify a 5,000-character path is stored intact and a short input is saved even when its generated URL is longer.
@@ -175,7 +178,7 @@ The earlier milestone records below describe historical validation/shortening po
 - Frontend compatibility: all 28 component/API-client tests and the frontend build passed; both live browser checks passed against the new packaged backend with an isolated file-backed H2 database on port 8081. Redirect following remained disabled.
 - No development database was opened or migrated during this work. First startup against `backend/data/` will apply the documented migration; back up that stopped database first.
 
-See `backend-design.md` for design decisions and corrections to the Copilot analysis. Amanda's review of this revision remains pending. Security and performance checks remain deferred; no hosted GitHub result or distributed capacity is claimed.
+See `backend-design.md` for design decisions and corrections to the Copilot analysis. Manual review of this revision was pending at this milestone. Security and performance checks remain deferred; no hosted GitHub result or distributed capacity is claimed.
 
 ## Earlier live HTTP smoke test
 
@@ -196,7 +199,7 @@ Verified locally with Node 20.19.5, React 19.3.1, Vite 8.3.5, Vitest 4.1.12, Pla
 - Backend `verify`: 28 tests passed and packaging completed.
 - Desktop and mobile screenshots were captured and visually inspected: `screenshots/landing-desktop.png` and `screenshots/result-mobile.png`.
 
-These are assistant-run checks. Amanda has not yet reviewed the test implementation. See `testing.md` for review order, commands, and limitations.
+These are assistant-run checks. Manual test review was pending at this milestone. See `testing.md` for review order, commands, and limitations.
 
 The user reports backend verification complete. The assistant did not repeat a process-restart disk-persistence check during the frontend milestone; the live browser checks used an isolated in-memory database.
 
@@ -209,8 +212,8 @@ Renamed the page and browser metadata to Sniply. The input is labelled **Put you
 - Live Chrome browser tests: 2 passed using the packaged backend on port 8081 and a temporary in-memory database. Creation, clipboard contents, and the exact redirect Location passed; redirects were not followed externally.
 - Refreshed and visually inspected the desktop, mobile, and mid-cut screenshots in `docs/screenshots/`.
 
-These are assistant-run functional and visual checks; they do not measure animation frame rate or replace Amanda's review. The backend source was unchanged and its full test suite was not rerun for this visual update.
+These are assistant-run functional and visual checks; they do not measure animation frame rate or replace manual review. The backend source was unchanged and its full test suite was not rerun for this visual update.
 
 ## Remaining verification
 
-The manual checklist now has Amanda's completion confirmation, including actual-phone portrait/landscape, keyboard-only use, zoom/wrapping, and the wider Google account review. Specific mobile Safari and on-screen-keyboard coverage, screen-reader review, and a manual fresh-machine startup walkthrough have not been separately recorded. Automated CI performs a checkout and the configured build/test jobs; that does not replace the manual startup walkthrough. Security scans, stress/load tests, and production deployment remain deferred. Hosted CI evidence remains tied to the linked application commit; Amanda's checklist confirmation does not supply an additional run identifier.
+The manual checklist is complete, including phone portrait/landscape, keyboard-only use, zoom/wrapping, and Google account checks. Specific mobile Safari and on-screen-keyboard coverage, screen-reader review, and a manual fresh-machine startup walkthrough have not been separately recorded. Security scans, stress/load tests, and production deployment remain deferred. Hosted CI evidence remains tied to the linked application commit.

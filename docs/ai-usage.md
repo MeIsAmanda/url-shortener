@@ -8,9 +8,9 @@ Sniply uses Java 25/Spring Boot, React/Vite, file-backed H2, and Flyway V1–V5 
 - ID allocation does not create an empty link row. The service saves the mapping afterward; failed inserts and unused reserved timestamps can leave gaps.
 - New destinations must satisfy the HTTP(S), domain/TLD, encoding, and 2,048-character [validation policy](url-validation.md). Accepted input is stored unchanged. Generated URLs may be equal in length or longer than the destination.
 - Guest recent history uses browser localStorage. Optional Google sign-in provides separate server-owned history and redirect counts; it does not claim older anonymous links. See [accounts.md](accounts.md).
-- Automated checks and the passing hosted CI run are recorded in [verification.md](verification.md). Amanda reported completing the manual review checklist on 27 October 2026, including assertion review, actual-phone checks, and the wider Google account review. Fresh-machine startup, screen-reader review, security scans, and load testing remain separate work.
+- Manually verified on 27 October 2026: assertion review, URL flows, phone/keyboard checks, history, and Google account checks. Automated results, environments, and the passing hosted CI run are recorded in [verification.md](verification.md). Fresh-machine startup, screen-reader review, security scans, and load testing remain separate work.
 
-The personal work, time, and learning logs below retain Amanda's wording and can describe earlier assumptions. The current architecture and limitations above clarify those historical notes without rewriting them.
+The personal work, time, and learning logs below can describe earlier assumptions. The current architecture and limitations above clarify those historical notes.
 
 ## Prompt structure
 
@@ -30,7 +30,7 @@ These notes describe the initial random-code design. The earlier output-length r
 - The complete generated link must be shorter, including hostname and port.
 - URL validation does not prove that a destination exists or is safe.
 
-## Amanda's work log
+## Work log
 
 - Defined the project requirements and constraints, including the responsive interface, URL-validation policy, AI prompting workflow, and planned security and performance checks.
 - Used AI assistance to generate the initial Spring Boot backend and React frontend, then directed changes to the API, interface, and application behavior.
@@ -41,7 +41,7 @@ These notes describe the initial random-code design. The earlier output-length r
 - Connected the project to GitHub and reviewed automated-check failures and proposed fixes, including the difference in invalid-Punycode handling between Node versions.
 - Reorganized the README and supporting documentation to make setup, design tradeoffs, verification evidence, and remaining limitations easier for an examiner to find.
 
-## Amanda's time log
+## Time log
 
 These are approximate session notes, rather than a complete record of active development time. Sessions included waiting for AI-generated output and automated checks.
 
@@ -52,7 +52,7 @@ These are approximate session notes, rather than a complete record of active dev
 - **Sunday, around 3am:** Added Snowflake allocation. My initial description was that it would “scramble” IDs; the learning notes below correct that understanding.
 - **Monday, around 11pm:** Reviewed test cases, fixes, code, and documentation with AI assistance.
 
-## Amanda's personal learning log
+## Personal learning log
 
 ### Encoding and uniqueness are separate concerns
 

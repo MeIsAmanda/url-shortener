@@ -96,9 +96,9 @@ V5 changes new link ID allocation to Snowflake followed by Base62. Existing owne
 
 Backend tests exercise account isolation, same-subject reuse, distinct simulated subjects with the same email, CSRF, logout, simulated session expiry, pagination, atomic concurrent counts, HEAD behavior, authorization redirect/invalid-state routing, and file-backed migration/reopen. Authenticated tests use Spring Security's test OIDC principals; browser account tests stub session/history responses. They do not perform a valid Google code exchange, test actual browser cookie handling, or wait for the idle timeout. See the [assertion boundaries](testing.md#what-the-assertions-currently-establish) for the exact pagination and callback checks.
 
-Amanda reported manually verifying real Google sign-in on 27 October 2026. This is user-reported manual verification, separate from the simulated identities used by automated tests. OAuth credentials are still required for anyone enabling sign-in in their own environment.
+Manually verified on 27 October 2026: real Google sign-in, owner isolation with two Google test accounts, exact redirects/count updates, and sign-out/restart/sign-in history restoration. Environment details are in the [verification record](verification.md#manual-verification--27-october-2026); the completed checklist is in [testing.md](testing.md#manual-review-checklist).
 
-Amanda subsequently reported completing the full manual checklist on 27 October 2026, including two real Google test accounts, owner isolation, exact redirects/count updates, and sign-out/restart/sign-in history restoration. This records manual review, while automated account tests continue to use simulated identities. Existing anonymous links should stay unowned. See [testing.md](testing.md) and [verification.md](verification.md) for the checklist and recorded results.
+Automated account tests use simulated identities. OAuth credentials are required to enable sign-in in a new environment. Existing anonymous links remain unowned.
 
 UI previews use explicitly mocked account/analytics data, not a real Google sign-in: [desktop account preview](screenshots/account-desktop.png) and [mobile account preview](screenshots/account-mobile.png).
 

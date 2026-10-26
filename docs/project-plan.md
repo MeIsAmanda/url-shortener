@@ -3,7 +3,7 @@
 Submission deadline: Tuesday 27 October 2026 at 6pm Singapore time  
 Planning date: 24 October 2026
 
-Current policy update (25 October 2026): at Amanda's request, validate new destination URLs for HTTP(S), domain/TLD format, correct percent escapes, absence of raw whitespace, and a 2,048-character maximum. Store accepted URLs unchanged and create mappings even when the generated URL is equal in length or longer. This supersedes the accept-any-string policy from 24 October. Website availability is not checked. See [url-validation.md](url-validation.md).
+Current policy update (25 October 2026): validate new destination URLs for HTTP(S), domain/TLD format, correct percent escapes, absence of raw whitespace, and a 2,048-character maximum. Store accepted URLs unchanged and create mappings even when the generated URL is equal in length or longer. This supersedes the accept-any-string policy from 24 October. Website availability is not checked. See [url-validation.md](url-validation.md).
 
 ## Purpose and recommended scope
 
@@ -13,7 +13,7 @@ Complete the required features first. Introduce basic security and a lightweight
 
 ### Current implementation and remaining work
 
-The Snowflake/Base62 backend, Flyway V1–V5 migrations, H2 persistence, Sniply frontend, scissors interaction, optional Google accounts, account link history/creation dates/redirect counts, tests, and GitHub Actions workflow are implemented. The fixed Snowflake epoch is 25 October 2026 00:00 Asia/Singapore. Hosted CI passed for application commit `08e53f7`; the run and local results are in [verification.md](verification.md). Amanda reported completing the manual review checklist on 27 October 2026, including assertion review, actual-phone checks, real Google sign-in, and the wider account review. Other environments still require OAuth client configuration.
+The Snowflake/Base62 backend, Flyway V1–V5 migrations, H2 persistence, Sniply frontend, scissors interaction, optional Google accounts, account link history/creation dates/redirect counts, tests, and GitHub Actions workflow are implemented. The fixed Snowflake epoch is 25 October 2026 00:00 Asia/Singapore. Hosted CI passed for application commit `08e53f7`; the run and local results are in [verification.md](verification.md). Manually verified on 27 October 2026: assertion review, URL flows, phone/keyboard checks, history, and Google sign-in/account isolation. Other environments still require OAuth client configuration.
 
 Next: perform a manual clean-checkout/submission review and confirm new GitHub checks when application code changes. Security scanning/hardening and performance measurements remain deferred to their own milestones. The completed testing checklist does not imply that these separate milestones or the entire final submission checklist are complete.
 
@@ -130,7 +130,7 @@ Configure H2 connections with `SET WRITE_DELAY 0` so committed writes do not ret
 
 ## 5 Frontend and mobile outline
 
-Use one compact, whimsical scissors-themed page inspired by Amanda's reference: soft blue browser chrome, cream background, rounded type, an original character holding oversized scissors, and small decorative icons. Keep copy brief and omit the previous explanatory paragraphs and three-step section. Include a labelled input, clear action, **Snip my link** button, request/error feedback, and a compact result with Copy, Open, and expandable Original link actions.
+Use one compact, whimsical scissors-themed page inspired by the supplied reference: soft blue browser chrome, cream background, rounded type, an original character holding oversized scissors, and small decorative icons. Keep copy brief and omit the previous explanatory paragraphs and three-step section. Include a labelled input, clear action, **Snip my link** button, request/error feedback, and a compact result with Copy, Open, and expandable Original link actions.
 
 Use **Sniply** branding. Label the input **Put your long URL here!** with a decorative curly arrow pointing down to the field. Keep confetti below the input, including during the cutting animation, and keep the character's shirt plain.
 
@@ -155,7 +155,7 @@ Place the real editable URL field at the scissors' cutting point instead of a si
 
 ### Added account milestone — 25 October 2026
 
-At Amanda's request, add optional Google OAuth2/OpenID Connect login with automatic account creation by verified Google subject. Preserve anonymous shortening and its separate local browser collection. Signed-in creations belong to the backend-authenticated owner and appear in a private, paginated My links view with server creation dates and atomic GET redirect counts. Do not auto-claim public/anonymous links. Include session/CSRF protections, logout, expired-session handling, migration/restart compatibility, and tests for owner isolation. Google Cloud client registration and real-provider testing are manual setup steps; see [accounts.md](accounts.md).
+Add optional Google OAuth2/OpenID Connect login with automatic account creation by verified Google subject. Preserve anonymous shortening and its separate local browser collection. Signed-in creations belong to the backend-authenticated owner and appear in a private, paginated My links view with server creation dates and atomic GET redirect counts. Do not auto-claim public/anonymous links. Include session/CSRF protections, logout, expired-session handling, migration/restart compatibility, and tests for owner isolation. Google Cloud client registration and real-provider testing are manual setup steps; see [accounts.md](accounts.md).
 
 ## 6 Lightweight prompt engineering workflow
 
@@ -203,7 +203,7 @@ The protections below describe the intended baseline and current implementation 
 - Disable the H2 console outside an explicit local development profile. Do not expose database or sensitive management endpoints publicly.
 - If deployed, use HTTPS and verify suitable response headers. Apply HSTS only in an HTTPS deployment.
 
-Optional after the core works: add a simple limit to URL creation requests, return 429 with clear feedback, and test it. An in-memory limiter has single-instance and restart limitations; document those. Google authentication/account history and basic redirect counters were added to scope at Amanda's request; broader security scans/hardening remain deferred.
+Optional after the core works: add a simple limit to URL creation requests, return 429 with clear feedback, and test it. An in-memory limiter has single-instance and restart limitations; document those. Google authentication/account history and basic redirect counters were added to scope; broader security scans/hardening remain deferred.
 
 ### Scan after the first working version
 
@@ -297,7 +297,7 @@ The current repository contains backend/, frontend/, docs/, a root README.md and
 
 The README is the short examiner entry point: overview, preview, guest quick start, demo steps, checks, design tradeoffs, current limitations, and links into docs/. Detailed configuration/API examples are in [local-development.md](local-development.md), with architecture, migration history, OAuth setup, test inventories, and dated results in their dedicated guides. A clean checkout should run without private local files; a manual fresh-machine walkthrough remains to be recorded.
 
-## 11 Initial timeline (Amanda: I will be doing as much as I can in one-two days instead)
+## 11 Initial timeline (target: one–two days of development)
 
 | Date | Work and order | Completion checkpoint |
 | --- | --- | --- |

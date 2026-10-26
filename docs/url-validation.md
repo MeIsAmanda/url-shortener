@@ -1,6 +1,6 @@
 # Destination URL validation
 
-Policy updated at Amanda's request on 25 October 2026. This supersedes the earlier accept-any-string policy for new links. It does not restore the requirement that generated output be shorter than its input.
+Policy updated on 25 October 2026. This supersedes the earlier accept-any-string policy for new links. It does not restore the requirement that generated output be shorter than its input.
 
 ## Accepted input
 

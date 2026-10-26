@@ -93,7 +93,7 @@ Backend checks use isolated databases. The [testing guide](docs/testing.md) expl
 
 ## Limitations and assessment status
 
-The guest flow, account feature, responsive UI, automated checks, and CI are implemented. Amanda reported completing the manual review checklist on 27 October 2026, including real Google sign-in, account isolation, and actual-phone checks; see the [verification record](docs/verification.md) for scope and remaining checks.
+The guest flow, account feature, responsive UI, automated checks, and CI are implemented. Manually verified on 27 October 2026: Google sign-in, account isolation, URL creation/redirects, history, and phone/keyboard checks. See the [verification record](docs/verification.md) for environment details and remaining checks.
 
 - A manual fresh-machine walkthrough and specific mobile Safari/screen-reader coverage have not been recorded. Phone portrait/landscape and keyboard-only checks are included in the completed manual checklist.
 - H2 and in-memory sessions are configured for a single backend instance. A restart preserves links and accounts but requires signing in again.
@@ -114,5 +114,5 @@ The guest flow, account feature, responsive UI, automated checks, and CI are imp
 | [Recent snips](docs/recent-snips.md) | Guest history, storage behavior, and responsive layout |
 | [Testing guide](docs/testing.md) | Commands, test review order, boundaries, and manual checklist |
 | [Verification record](docs/verification.md) | Dated results, hosted CI evidence, and unverified work |
-| [AI usage and learning notes](docs/ai-usage.md) | AI-assisted workflow and Amanda's work and learning logs |
+| [AI usage and learning notes](docs/ai-usage.md) | AI-assisted workflow, work log, and learning notes |
 | [Project plan](docs/project-plan.md) / [Prompt template](docs/prompt-template.md) | Assessment scope, follow-up work, and reusable change context |
