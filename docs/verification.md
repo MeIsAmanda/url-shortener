@@ -2,6 +2,14 @@
 
 Local checks for the CI URL-validation fix were run on 26 October 2026 with Java 25/Spring Boot 4.1.2, Node 20.19.5 and 24.22.1, and installed headless Chrome on Windows. On 27 October, GitHub's API confirmed that the revised hosted workflow passed for application commit `08e53f7`, and Amanda reported manually verifying real Google sign-in. Earlier dated entries retain their historical results and policies; use the latest dated entries and [remaining verification](#remaining-verification) for current status.
 
+## Latest hosted CI result — 27 October 2026
+
+[GitHub Actions run 40383841916 passed](https://github.com/MeIsAmanda/url-shortener/actions/runs/40383841916)
+for main commit `cd3a69b`.
+
+The workflow completed backend verification, frontend tests and builds
+on Node 20 and 24, and Chromium browser checks on Node 24.
+
 ## Manual review checklist completed — 27 October 2026
 
 Amanda reported completing every item in the [manual review checklist](testing.md#manual-review-checklist). This covers assertion review and a deliberate watch-mode test failure/restoration; valid and invalid input, protocol completion, error recovery with a stopped backend, copying and redirects; keyboard-only use, an actual phone in portrait/landscape, zoom, wrapping and cursor behavior; guest history persistence, copy/removal/clearing and cross-tab sharing; GitHub checks review; and real Google sign-in with two-account isolation, redirect/count checks, logout and restart/sign-in history restoration.
