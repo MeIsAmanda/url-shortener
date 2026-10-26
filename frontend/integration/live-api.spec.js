@@ -68,7 +68,7 @@ test('saves a short destination even when the generated link is longer', async (
   const open = page.getByRole('link', { name: 'Open link' });
   await expect(open).toBeVisible();
   expect((await open.getAttribute('href')).length).toBeGreaterThan('https://x.co'.length);
-  await expect(input).toHaveValue('https://x.co');
+  await expect(input).toHaveValue('');
 });
 
 test('corrects a validation error then preserves encoded input through a real redirect', async ({ page }) => {
@@ -85,7 +85,7 @@ test('corrects a validation error then preserves encoded input through a real re
   const originalUrl = 'https://Example.COM/a%20b?q=two+words&x=%2F&x=2#Section';
   await input.fill(originalUrl.slice('https://'.length));
   await page.getByRole('button', { name: 'Snip my link' }).click();
-  await expect(input).toHaveValue(originalUrl);
+  await expect(input).toHaveValue('');
   const shortUrl = await page.getByRole('link', { name: 'Open link' }).getAttribute('href');
   const response = await page.request.get(new URL(shortUrl).pathname, { maxRedirects: 0 });
   expect(response.status()).toBe(302);

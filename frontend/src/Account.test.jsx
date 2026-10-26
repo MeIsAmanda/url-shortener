@@ -58,6 +58,7 @@ it('sends signed-in creation with CSRF and does not put account links in guest s
   await keyboard.type(screen.getByRole('textbox'), originalUrl);
   await keyboard.click(screen.getByRole('button', { name: 'Snip my link' }));
   expect(await screen.findByRole('link', { name: 'Open link', exact: true })).toHaveAttribute('href', shortUrl);
+  expect(screen.getByRole('textbox')).toHaveValue('');
   expect(state.calls.find(call => call.path === '/api/urls').options.headers).toMatchObject({
     'X-CSRF-TOKEN': 'session-token', 'X-Sniply-Account': 'true',
   });

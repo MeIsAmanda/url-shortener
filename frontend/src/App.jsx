@@ -17,6 +17,7 @@ export default function App() {
   const [result, setResult] = useState(null);
   const [copyState, setCopyState] = useState('idle');
   const [snipCount, setSnipCount] = useState(0);
+  const [snippedInput, setSnippedInput] = useState('');
   const inputRef = useRef(null);
   const submitting = useRef(false);
   const resultVersion = useRef(0);
@@ -43,6 +44,8 @@ export default function App() {
       return;
     }
     setPending(true);
+    // Keep the cut text intact when a fast response clears the editable field.
+    setSnippedInput(destination);
     setSnipCount((count) => count + 1);
     submitting.current = true;
     // The illustration runs independently: never delay the API or its result.
@@ -53,6 +56,7 @@ export default function App() {
       });
       if (submissionVersion !== resultVersion.current) return;
       setResult(created);
+      setInput('');
       if (account.user) setAccountVersion(value => value + 1);
       else history.remember(created);
     } catch (failure) {
@@ -141,6 +145,7 @@ export default function App() {
                   <SnipInput
                     inputRef={inputRef}
                     value={input}
+                    cutValue={snippedInput}
                     pending={pending}
                     error={error}
                     run={snipCount}

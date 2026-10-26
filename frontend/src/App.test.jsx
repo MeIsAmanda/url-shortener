@@ -19,16 +19,15 @@ function setup() {
 beforeEach(() => vi.stubGlobal('fetch', vi.fn()));
 
 describe('the shortening journey', () => {
-  it('clears the destination and result and restores input focus', async () => {
+  it('clears the successful destination and keeps the result available', async () => {
     fetch.mockResolvedValue(success());
     const { user, input, submit } = setup();
     await user.type(input, originalUrl);
     await user.click(submit);
-    await screen.findByRole('link', { name: 'Open link' });
-    await user.click(screen.getByRole('button', { name: 'Clear URL' }));
+    const open = await screen.findByRole('link', { name: 'Open link' });
     expect(input).toHaveValue('');
-    expect(input).toHaveFocus();
-    expect(screen.queryByRole('link', { name: 'Open link' })).not.toBeInTheDocument();
+    expect(open).toHaveAttribute('href', shortUrl);
+    expect(within(screen.getByRole('region', { name: 'Freshly snipped!' })).getByText(originalUrl)).toBeInTheDocument();
     expect(screen.getByRole('button', { name: 'Clear URL' })).toBeDisabled();
   });
 
@@ -42,14 +41,14 @@ describe('the shortening journey', () => {
     expect(screen.getAllByRole('textbox')).toHaveLength(1);
   });
 
-  it('keeps the real input mounted with its value and focus after Enter submission', async () => {
+  it('keeps the real input mounted and focused but clears its value after success', async () => {
     fetch.mockResolvedValue(success());
     const { user, input } = setup();
     await user.type(input, `${originalUrl}{Enter}`);
     await screen.findByRole('link', { name: 'Open link' });
     expect(screen.getByRole('textbox', { name: 'Put your long URL here!' })).toBe(input);
     expect(input).toHaveFocus();
-    expect(input).toHaveValue(originalUrl);
+    expect(input).toHaveValue('');
   });
 
   it('rejects blank input and focuses the field without requesting or animating', async () => {
@@ -69,7 +68,7 @@ describe('the shortening journey', () => {
     expect(input).toHaveValue('https://example.com');
     await user.keyboard('{Enter}');
     expect(await screen.findByRole('link', { name: 'Open link' })).toBeInTheDocument();
-    expect(input).toHaveValue('https://example.com');
+    expect(input).toHaveValue('');
     expect(JSON.parse(fetch.mock.calls[0][1].body)).toEqual({ originalUrl: 'https://example.com' });
     expect(input).toHaveFocus();
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
@@ -132,6 +131,7 @@ describe('the shortening journey', () => {
     await user.click(submit);
     expect(screen.getByRole('button', { name: 'Snipping…' })).toBeDisabled();
     expect(input).toHaveAttribute('readonly');
+    expect(input).toHaveValue(originalUrl);
     await user.click(submit);
     await user.click(input);
     await user.keyboard('{Enter}');
@@ -146,7 +146,7 @@ describe('the shortening journey', () => {
     await user.type(input, 'https://x.co');
     await user.click(submit);
     expect(await screen.findByRole('link', { name: 'Open link' })).toHaveAttribute('href', shortUrl);
-    expect(input).toHaveValue('https://x.co');
+    expect(input).toHaveValue('');
     expect(screen.queryByRole('alert')).not.toBeInTheDocument();
   });
 
@@ -159,6 +159,7 @@ describe('the shortening journey', () => {
     expect(input).toHaveValue(originalUrl);
     await user.click(submit);
     expect(await screen.findByRole('link', { name: 'Open link' })).toBeInTheDocument();
+    expect(input).toHaveValue('');
   });
 
   it('removes the previous result when the input changes', async () => {

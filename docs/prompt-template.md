@@ -17,6 +17,7 @@ I am building Sniply, a URL shortener for a technical assessment.
 - Accounts: optional Google OAuth2/OIDC sign-in, server sessions/CSRF, V4 account ownership, paginated My links with creation dates and atomic GET redirect counts. Guest history is separate; anonymous links are not auto-claimed. See [accounts.md](accounts.md).
 - Destination policy: validate HTTP(S) format, recognized domain/TLD, percent escapes, no raw whitespace, and a 2,048-character maximum. Store accepted input unchanged; generated output need not be shorter. See [url-validation.md](url-validation.md).
 - Form convenience: visibly add https:// to a missing protocol during bare-hostname keyboard entry/paste, with blur/submit as a fallback before validation. Preserve explicit schemes; direct API input still requires HTTP(S).
+- Successful snips clear the textbox while retaining the result and history. Errors retain input; the cut animation uses a submitted-text snapshot.
 
 Describe the relevant existing code here.
 

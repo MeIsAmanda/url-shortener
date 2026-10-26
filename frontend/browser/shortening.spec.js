@@ -36,6 +36,7 @@ for (const [width, height] of [[320, 780], [360, 900], [390, 900], [768, 900], [
     await page.getByRole('textbox', { name: 'Put your long URL here!' }).fill(originalUrl);
     await page.getByRole('textbox', { name: 'Put your long URL here!' }).press('Enter');
     await expect(page.getByRole('link', { name: 'Open link' })).toHaveAttribute('href', shortUrl);
+    await expect(page.getByRole('textbox', { name: 'Put your long URL here!' })).toHaveValue('');
     expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
     await page.getByText('Original link', { exact: true }).click();
     await expect(page.getByRole('region', { name: 'Freshly snipped!' }).getByText(originalUrl, { exact: true })).toBeVisible();
@@ -54,7 +55,7 @@ test('accepts valid Punycode without changing the submitted destination', async 
   await input.fill(destination);
   await page.getByRole('button', { name: 'Snip my link' }).click();
   await expect(page.getByRole('link', { name: 'Open link' })).toHaveAttribute('href', shortUrl);
-  await expect(input).toHaveValue(destination);
+  await expect(input).toHaveValue('');
 });
 
 test('supports keyboard validation and correction without a request for invalid input', async ({ page }) => {
@@ -124,7 +125,7 @@ for (const [index, [typed, completed, width, enter]] of [
     if (enter) await input.press('Enter');
     else await page.getByRole('button', { name: 'Snip my link' }).click();
     await expect(page.getByRole('link', { name: 'Open link' })).toBeVisible();
-    await expect(input).toHaveValue(completed);
+    await expect(input).toHaveValue('');
     await expect(page.getByRole('alert')).toHaveCount(0);
   });
 }
@@ -183,14 +184,18 @@ test('plays and replays the snip without making a fast API result wait', async (
   await page.goto('/');
   const scene = page.getByTestId('cutting-scene');
   const initialScene = await scene.elementHandle();
-  await page.getByRole('textbox', { name: 'Put your long URL here!' }).fill(originalUrl);
+  const input = page.getByRole('textbox', { name: 'Put your long URL here!' });
+  await input.fill(originalUrl);
   await page.getByRole('button', { name: 'Snip my link' }).click();
   await expect(page.getByRole('link', { name: 'Open link' })).toBeVisible();
   // The result is already usable while the independent 1.1-second snip plays.
   expect(await scene.evaluate((svg) => svg.getAnimations({ subtree: true }).some((animation) => animation.playState === 'running'))).toBe(true);
   expect(await initialScene.evaluate((svg) => svg.isConnected)).toBe(false);
+  await expect(input).toHaveValue('');
+  await expect(page.locator('.input-facade > span')).toHaveText([originalUrl, originalUrl]);
 
   const previousScene = await scene.elementHandle();
+  await input.fill(originalUrl);
   await page.getByRole('button', { name: 'Snip my link' }).click();
   await expect(page.getByRole('link', { name: 'Open link' })).toBeVisible();
   expect(await previousScene.evaluate((svg) => svg.isConnected)).toBe(false);

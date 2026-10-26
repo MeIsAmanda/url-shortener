@@ -4,7 +4,7 @@ import { completeProtocolWhileTyping } from './urlValidation.js';
 
 const PLACEHOLDER = 'Pop your link in here…';
 
-export default function SnipInput({ inputRef, value, pending, error, run, onChange, onBlur, onClear }) {
+export default function SnipInput({ inputRef, value, cutValue, pending, error, run, onChange, onBlur, onClear }) {
   const [cancelledRun, setCancelledRun] = useState(0);
   const selectionAfterCompletion = useRef(null);
   const cutting = run > 0 && run !== cancelledRun && !error;
@@ -81,7 +81,7 @@ export default function SnipInput({ inputRef, value, pending, error, run, onChan
           {['left', 'right'].map((side) => (
             <div className={`input-slice input-slice--${side}`} key={side}>
               <div className="input-facade">
-                <span className={value ? '' : 'facade-placeholder'}>{value || PLACEHOLDER}</span>
+                <span className={cutValue ? '' : 'facade-placeholder'}>{cutValue || PLACEHOLDER}</span>
                 <Icon name="close" />
               </div>
             </div>

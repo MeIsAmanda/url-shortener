@@ -2,7 +2,13 @@
 
 Local checks for the CI URL-validation fix were run on 26 October 2026 with Java 25/Spring Boot 4.1.2, Node 20.19.5 and 24.22.1, and installed headless Chrome on Windows. On 27 October, GitHub's API confirmed that the revised hosted workflow passed for application commit `08e53f7`. Earlier dated entries retain their historical results and policies; use the latest-results table and [remaining verification](#remaining-verification) for current status. No real Google-provider login is claimed.
 
-## Latest recorded results
+## Successful-snip input reset — 27 October 2026
+
+The long-URL textbox now clears only after successful creation. The result, original-destination disclosure, and history remain available; failed attempts retain the input. The cutting animation uses a submitted-text snapshot so a fast response does not clear its visual halves.
+
+All 155 frontend tests, the production build, and all 39 isolated Chrome browser checks passed with Node 24. All four live Chrome checks also passed against the packaged backend using an isolated in-memory H2 database on port 18081 and the frontend proxy on port 4173. No external redirect was followed. Backend production code is unchanged, so Maven verification was not repeated. These local checks cover this input-reset change; the hosted run below predates it.
+
+## Previously recorded CI-fix results
 
 | Check | Result | Boundary |
 | --- | --- | --- |

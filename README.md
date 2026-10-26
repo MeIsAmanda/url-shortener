@@ -52,7 +52,7 @@ Links persist in `backend/data/` when the backend starts from `backend/`. Restar
 
 1. Paste a public URL, for example `https://en.wikipedia.org/wiki/URL_shortening`.
 2. Click **Snip my link** or press Enter. The form completes a missing protocol as `https://`.
-3. Use **Copy** or **Open**, then reload the page to see the link in **Recent snips**.
+3. The textbox clears after success. Use **Copy** or **Open**, then reload the page to see the link in **Recent snips**.
 
 Guest history keeps the latest 20 successful links in this browser. Clearing that list does not delete the backend mappings.
 
