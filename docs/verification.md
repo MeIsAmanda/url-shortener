@@ -1,16 +1,27 @@
 # Project verification
 
-The CI URL-validation fix was checked on 26 October 2026 with Java 25/Spring Boot 4.1.2, Node 20.19.5 and 24.22.1, and installed headless Chrome on Windows. Hosted failures were inspected through GitHub's API; the revised workflow still needs a new push for hosted confirmation. Earlier milestones retain their original results and policies. No real Google-provider login is claimed.
+Local checks for the CI URL-validation fix were run on 26 October 2026 with Java 25/Spring Boot 4.1.2, Node 20.19.5 and 24.22.1, and installed headless Chrome on Windows. On 27 October, GitHub's API confirmed that the revised hosted workflow passed for application commit `08e53f7`. Earlier dated entries retain their historical results and policies; use the latest-results table and [remaining verification](#remaining-verification) for current status. No real Google-provider login is claimed.
 
 ## Latest recorded results
 
 | Check | Result | Boundary |
 | --- | --- | --- |
+| Hosted GitHub Actions | [Run 40353576463 passed](https://github.com/MeIsAmanda/url-shortener/actions/runs/40353576463) for `08e53f7` | Backend plus frontend Node 20/24 jobs; the Node 24 job includes Chromium checks; no deployment or real Google login |
 | Backend Maven verify | 162 passed: 161 unit/API/migration cases plus 1 packaged restart check | Expanded shared Punycode fixtures; isolated databases; executable JAR built |
 | Frontend tests | 155 passed across 7 files on both Node 20.19.5 and Node 24.22.1 | Includes explicit IDNA regressions and a permissive URL-parser simulation |
 | Frontend production build and clean install | Builds passed on Node 20.19.5 and Node 24.22.1; npm ci passed on Node 24 | Pinned runtime IDNA dependency and updated lockfile |
 | Isolated Chrome browser suite | 39 passed under Node 24 with CI=true and two workers | Windows Chrome; invalid Punycode blocked before requests; valid international URL preserved; account/session responses stubbed |
 | Live Chrome browser suite | 4 passed in the preceding Snowflake milestone | Not rerun for this frontend validation fix; backend production code is unchanged |
+
+## Examiner documentation and hosted confirmation — 27 October 2026
+
+Reorganized the README as a short examiner entry point: preview, credential-free guest startup, demo steps, checks, design tradeoffs, current limitations, and documentation links. Detailed environment settings, direct API examples, persistence/backups, preview mode, and guest phone access are in [local-development.md](local-development.md). No exact automated test counts are maintained in the README.
+
+The successful [Project checks run](https://github.com/MeIsAmanda/url-shortener/actions/runs/40353576463) was created on 26 October for `review-and-polish` at application commit `08e53f771bc8a72c6645d03b9f304bd383cfd089`. GitHub's API confirms successful backend verification and both frontend Node-version jobs. This establishes the hosted result for that code commit; documentation/screenshot edits in this entry were not part of that run.
+
+Refreshed and visually inspected `screenshots/history-desktop.png` at 1280×900 and `screenshots/result-mobile.png` at 390×844. Captures use the current built application, installed Chrome, a temporary in-memory backend on port 18081, a local preview on port 14173, and Google login disabled. Two guest mappings were created and shown in browser history; external destinations were not opened. Both temporary servers were stopped afterward. Development data and personal AI-use logs were untouched. This was a documentation preview/smoke check; the full test suites were not rerun and actual-device or real Google-provider verification is not implied.
+
+The follow-up documentation review compared all guides with the current configuration, allocator, ownership/history logic, test assertions, and workflow. It corrected current versus historical allocation/output policies, clarified session-cookie configuration and simulated OAuth/expiry coverage, expanded the plan's account/redirect data model and API summary, made Unix Maven commands independent of the executable bit, and made deferred scan/load work explicit. Local documentation file/image/heading links and Markdown formatting were checked. Amanda's work/time/learning log text was preserved exactly; technical clarification was added above those logs. Application code and tests were unchanged, and no full test suites or new provider/device/security/performance checks were run for this review.
 
 ## CI Punycode validation fix — 26 October 2026
 
@@ -22,7 +33,7 @@ The frontend now explicitly validates `xn--` labels with pinned `tr46` 6.0.0 IDN
 
 All 155 frontend tests and production builds passed on Node 20 and Node 24. A clean Node 24 npm installation/build also passed; the production JavaScript bundle is about 154 kB gzip, versus about 84 kB before including the IDNA library. This is a build-size observation, not a performance benchmark. All 39 browser cases passed with Node 24, CI concurrency/retry settings, and installed Windows Chrome. All 162 backend checks passed against isolated databases, including the six added shared fixtures and the packaged abrupt-stop/restart check. No development database was opened.
 
-The workflow now runs component tests and builds on Node 20 and 24, with Chromium acceptance checks on Node 24. Node 24 remains the recommended development runtime; the Node 20 job covers the existing compatibility promise. New hosted job names are `Frontend tests and build (Node 20)` and `Frontend tests and build (Node 24)`; any branch rules requiring the previous frontend name need to use the new names after the jobs have appeared. No branch rules, remote commits, pushes, or workflow reruns were performed. The local fix needs committing/pushing before GitHub can run it; rerunning an old commit would execute the old validator again.
+The workflow now runs component tests and builds on Node 20 and 24, with Chromium acceptance checks on Node 24. Node 24 remains the recommended development runtime; the Node 20 job covers the existing compatibility promise. Hosted job names are `Frontend tests and build (Node 20)` and `Frontend tests and build (Node 24)`; any branch rules requiring the previous frontend name need to use those names. At the end of this 26 October local-fix session, the assistant had not committed or pushed it and hosted confirmation was pending. The subsequent successful run for `08e53f7` is recorded in the 27 October entry above. Rerunning an older commit still executes that commit's validator.
 
 ## Snowflake IDs and Base62 — 25 October 2026
 
@@ -150,7 +161,7 @@ The earlier milestone reported a missing main manifest attribute on direct JAR e
 
 ## Frontend milestone — 24 October 2026
 
-Verified locally with Node 20.19.5, React 19.3.1, Vite 8.3.5, Vitest 4.1.12, Playwright 1.64.1, and installed headless Chrome. GitHub CI is configured for Node 24 and Java 25; the hosted run remains pending.
+Verified locally with Node 20.19.5, React 19.3.1, Vite 8.3.5, Vitest 4.1.12, Playwright 1.64.1, and installed headless Chrome. At this 24 October milestone, CI was configured for Node 24 and Java 25 and hosted confirmation was pending. Later workflow changes and hosted results are recorded in the newer entries above.
 
 - Frontend component/API-client tests: 28 passed (10 component cases and 18 client/validation cases).
 - Frontend production build: passed.
@@ -174,6 +185,6 @@ Renamed the page and browser metadata to Sniply. The input is labelled **Put you
 
 These are assistant-run functional and visual checks; they do not measure animation frame rate or replace Amanda's review. The backend source was unchanged and its full test suite was not rerun for this visual update.
 
-## Not yet verified
+## Remaining verification
 
-Actual phone/mobile Safari, browser zoom, on-screen keyboard and screen-reader review, a clean checkout, hosted GitHub Actions, security scanning, stress/load tests, and production deployment remain future checks. Automated responsive checks were performed in desktop Chrome at the specified viewport widths. Security and performance work is explicitly deferred to a later milestone.
+Real Google-provider sign-in, actual phone/mobile Safari, browser zoom, on-screen-keyboard and screen-reader review, and a manual fresh-machine startup walkthrough remain unverified. Automated CI performs a checkout and the configured build/test jobs; that does not replace the manual startup walkthrough or user review. Security scans, stress/load tests, and production deployment remain deferred. Automated responsive checks used desktop browsers at the specified viewport widths. Hosted CI is confirmed for the application commit linked in the latest recorded results, rather than pending globally.

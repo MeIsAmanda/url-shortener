@@ -12,7 +12,7 @@ I am building Sniply, a URL shortener for a technical assessment.
 
 - Backend: Java 25, Spring Boot, H2.
 - Link IDs: Snowflake (41 timestamp / 10 worker / 12 counter bits) followed by Base62; fixed epoch 25 October 2026 00:00 Asia/Singapore. V5 preserves legacy aliases and persists worker timestamp reservations. Configure distinct SNOWFLAKE_WORKER_ID values for multiple instances. See [snowflake.md](snowflake.md).
-- Frontend: React with Vite, JavaScript, and CSS; a responsive scissors-themed page with a short submission animation and native pixel-art cursor.
+- Frontend: React with Vite, JavaScript, and CSS; Node 24 recommended, with Node 20/24 CI checks. The page is responsive with a scissors submission animation and native pixel-art cursor.
 - Recent snips: latest 20 successful links in localStorage, beside the tool on desktop and below it on smaller screens. History removal does not delete backend mappings. See [recent-snips.md](recent-snips.md).
 - Accounts: optional Google OAuth2/OIDC sign-in, server sessions/CSRF, V4 account ownership, paginated My links with creation dates and atomic GET redirect counts. Guest history is separate; anonymous links are not auto-claimed. See [accounts.md](accounts.md).
 - Destination policy: validate HTTP(S) format, recognized domain/TLD, percent escapes, no raw whitespace, and a 2,048-character maximum. Store accepted input unchanged; generated output need not be shorter. See [url-validation.md](url-validation.md).
@@ -30,11 +30,13 @@ One specific change I want to make.
 - Read the relevant docs and code before proposing or generating changes.
 - Avoid unnecessary dependencies or features.
 - Never include credentials or sensitive information.
+- Keep the fixed Snowflake epoch and persisted worker state compatible; ID-format changes need an explicit migration strategy. Snowflake codes are structured and roughly time-ordered.
 - Preserve accepted destination strings and legacy aliases; keep the documented URL validation policy and visible frontend protocol completion. Do not otherwise trim/normalize input, fetch destinations, or require generated output to be shorter.
 - Security scanning, performance testing, and deployment are separate milestones unless explicitly requested.
 - Keep controls usable on mobile and respect reduced-motion preferences for decorative animations.
 - Explain important decisions so I can understand the code.
 - Keep documentation consistent, preserve my personal logs, and distinguish checks actually run from proposed checks.
+- Keep README startup guidance concise; put configuration and detailed explanations in docs/. Link to [local development](local-development.md) and the dated verification record rather than duplicating test counts or claiming unperformed Google/device/security/performance checks.
 
 ## Acceptance criteria
 

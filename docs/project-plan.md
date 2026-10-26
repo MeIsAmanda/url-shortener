@@ -13,9 +13,9 @@ Complete the required features first. Introduce basic security and a lightweight
 
 ### Current implementation and remaining work
 
-The Snowflake/Base62 backend, Flyway V1–V5 migrations, H2 persistence, Sniply frontend, scissors interaction, optional Google accounts, account link history/creation dates/redirect counts, tests, and GitHub Actions workflow are implemented. The fixed Snowflake epoch is 25 October 2026 00:00 Asia/Singapore. Google sign-in requires the user's OAuth client configuration and a real-provider manual check. Recorded local results are in [verification.md](verification.md); they do not establish user review or hosted CI completion.
+The Snowflake/Base62 backend, Flyway V1–V5 migrations, H2 persistence, Sniply frontend, scissors interaction, optional Google accounts, account link history/creation dates/redirect counts, tests, and GitHub Actions workflow are implemented. The fixed Snowflake epoch is 25 October 2026 00:00 Asia/Singapore. Hosted CI passed for application commit `08e53f7`; the run and local results are in [verification.md](verification.md). Google sign-in still requires the user's OAuth client configuration and a real-provider manual check. Automated results do not establish completion of Amanda's review.
 
-Next: review the code and test assertions, check the UI on an actual phone, and confirm the latest GitHub checks. Security scanning/hardening and performance measurements remain deferred to their own milestones. Finish with a clean-checkout check and submission review. Keep the final checklist unchecked until its complete requirement has been confirmed.
+Next: finish reviewing the code and test assertions, check the UI on an actual phone, and perform a manual clean-checkout/submission review. Confirm new GitHub checks when application code changes. Security scanning/hardening and performance measurements remain deferred to their own milestones. Keep the final checklist unchecked until its complete requirement has been confirmed.
 
 ## 1 Requirements and completion criteria
 
@@ -38,7 +38,7 @@ Accepted destinations are stored verbatim after syntax validation. Format/TLD va
 
 ## 2 Technology choices
 
-| Component | Proposed choice | Reason |
+| Component | Choice / status | Reason |
 | --- | --- | --- |
 | Frontend | React with Vite | Small interactive interface and straightforward setup |
 | Language | Java 25 backend; JavaScript frontend | Matches the implemented Maven and React projects |
@@ -50,15 +50,15 @@ Accepted destinations are stored verbatim after syntax validation. Format/TLD va
 | Backend tests | JUnit and Mockito | Test rules independently of the database |
 | API integration tests | Spring test support with a separate test database | Verify HTTP behaviour and persistence together |
 | Frontend tests | Vitest and React Testing Library | Verify user interactions and feedback |
-| Performance tests | k6 | Repeatable API load scenarios and measurable thresholds |
-| Repository automation | GitHub Actions | Run build and unit tests on pushes and pull requests |
+| Performance tests | k6 (planned; not implemented or run) | Proposed repeatable load scenarios and measurable thresholds |
+| Repository automation | GitHub Actions | Backend verification, frontend tests/builds on Node 20/24, and Node 24 browser checks |
 
 Use supported stable releases compatible with each other and document the actual Java and Node prerequisites. Do not upgrade dependencies without rerunning relevant checks. H2 is a deliberate assessment simplification; discuss a production database as a future improvement.
 
 ## 3 End to end behaviour
 
 1. User opens the landing page and enters a long URL.
-2. React submits it to the backend.
+2. React completes an omitted protocol, validates the completed input, and submits accepted input to the backend. Guests use browser-local history; signed-in users use server-owned history.
 3. Backend validates the submitted URL before ID allocation; invalid values return 400 INVALID_URL. Accepted input is not trimmed or rewritten.
 4. A Snowflake allocator combines elapsed milliseconds, configured worker identity, and a counter into a positive integer; a separate Base62 encoder converts it to a compact code. Persisted timestamp reservations protect restarts.
 5. Service constructs the generated URL from the configured public base URL without comparing lengths.
@@ -74,10 +74,14 @@ Keep the original destination semantics, including its path, query string, and f
 
 | Endpoint | Success | Error examples |
 | --- | --- | --- |
-| POST /api/urls | 201 with unchanged accepted originalUrl and generated shortUrl | 400 INVALID_URL for destination policy; 400 INVALID_REQUEST for malformed JSON; 500 storage/allocation failure |
-| GET /s/{code} | 302 with Location header | 404 unknown code |
+| POST /api/urls | 201 with unchanged accepted originalUrl and generated shortUrl; signed-in ownership comes from the principal | 400 INVALID_URL / INVALID_REQUEST; 401 when X-Sniply-Account: true is sent without authentication; 403 missing/invalid signed-in CSRF; 500 storage/allocation failure |
+| GET /s/{code} | No-store 302 with Location header; increments the redirect counter | 404 unknown code |
+| HEAD /s/{code} | Redirect headers without a click increment | 404 unknown code |
+| GET /api/auth/session | No-store user or null, Google-login availability, and CSRF token | Generic server error on an unexpected failure |
+| GET /api/account/links | Owner-filtered cursor page, creation dates, and counts | 401 unauthenticated; 400 invalid cursor |
+| POST /api/auth/logout | 204 after session invalidation | 403 missing/invalid CSRF |
 
-Use a consistent JSON error structure, such as code and message. Display a friendly unknown-link page for browser users where practical. Choose one repeated-input policy and document it; generating a new mapping each time is sufficient for this scope.
+Creation and unknown-code errors use code/message JSON responses. Unknown links currently return JSON rather than a dedicated HTML error page. Repeated submissions create distinct mappings; no destination deduplication policy is implemented. The account guide contains authentication/session details, and [local-development.md](local-development.md#direct-api-example) provides direct API examples.
 
 ### Data model
 
@@ -85,6 +89,8 @@ Use a consistent JSON error structure, such as code and message. Display a frien
 - code: Base62 encoding of the allocated ID for new links, with a database unique constraint and indexed lookup. Existing legacy aliases retain their original values.
 - originalUrl: saved destination.
 - createdAt: creation timestamp.
+- ownerId: nullable local account ID; guests remain unowned and existing anonymous links are not auto-claimed.
+- clickCount: zero-initialized total incremented atomically for resolved GET requests, including repeats and bots.
 
 ### Responsibilities
 
@@ -182,6 +188,8 @@ Keep a concise docs/ai-usage.md with a few useful prompts, what you accepted or 
 
 ## 7 Security implementation and scanning
 
+The protections below describe the intended baseline and current implementation choices. Dependency/source scans, rate limiting, broader hardening, and the proposed scan report remain follow-up work; their presence in this plan is not evidence they have been performed. See [verification.md](verification.md#remaining-verification) for the recorded outstanding checks.
+
 ### Build basic protections early
 
 - Current creation-time destination validation is documented in url-validation.md. Review total request-body limits in the later security milestone; a URL length rule is not a body-size limit.
@@ -212,6 +220,8 @@ GitHub feature availability depends on repository visibility and account setting
 Reserve about 60 to 90 minutes for initial scans and fixes. Keep commands, tool versions, results, and known limitations in docs/security.md. A scan with no findings is not a security guarantee.
 
 ## 8 Load testing and response time tracking
+
+This section is a proposed measurement plan. No k6 script, performance report, throughput result, or response-time guarantee has been completed or verified.
 
 Mobile responsiveness and response time are separate concerns. Verify the UI across screen sizes, and measure backend latency and capacity with repeatable API tests.
 
@@ -283,9 +293,9 @@ Include required unit tests explicitly; load tests and security scans do not rep
 
 ## 10 Repository and delivery outline
 
-The current repository contains backend/, frontend/, docs/, a root README.md and .gitignore, and .github/workflows/checks.yml. The workflow runs backend verify plus frontend tests/build on Node 20 and 24; Node 24 also runs browser checks. The recent hosted backend job passed. The frontend Punycode validation failure has a local fix and expanded regressions; confirm the revised hosted jobs after pushing. Add tests/load/ and security/performance reports when those milestones begin; they are not implemented yet.
+The current repository contains backend/, frontend/, docs/, a root README.md and .gitignore, and .github/workflows/checks.yml. The workflow runs backend verify plus frontend tests/build on Node 20 and 24; Node 24 also runs browser checks. The revised hosted workflow passed for application commit `08e53f7`, including the Punycode fix. See [verification.md](verification.md) for the run link and scope. Add tests/load/ and security/performance reports when those milestones begin; they are not implemented yet.
 
-The README should cover the app, prerequisites, exact run and test commands, environment settings, persistence, API examples, architecture, validation decisions, desktop/mobile screenshots, known limitations, and links to AI usage, security, and performance notes. A clean checkout should run without private local files.
+The README is the short examiner entry point: overview, preview, guest quick start, demo steps, checks, design tradeoffs, current limitations, and links into docs/. Detailed configuration/API examples are in [local-development.md](local-development.md), with architecture, migration history, OAuth setup, test inventories, and dated results in their dedicated guides. A clean checkout should run without private local files; a manual fresh-machine walkthrough remains to be recorded.
 
 ## 11 Initial timeline (Amanda: I will be doing as much as I can in one-two days instead)
 
@@ -302,18 +312,18 @@ Protect a submission buffer. If behind, cut optional ZAP, elaborate monitoring, 
 
 ## 12 Final submission checklist
 
-- [ ] Required user journey works, including real redirects.
-- [ ] Submitted strings are preserved; mapping creation does not require shorter output.
-- [ ] Unit tests pass and frontend/backend builds succeed.
-- [ ] Mobile and keyboard checks completed.
-- [ ] Core security protections implemented and findings reviewed.
-- [ ] Performance results identify the tested environment and limitations.
-- [ ] AI-assisted work is understood, verified, and described honestly.
-- [ ] README commands work from a clean checkout.
-- [ ] No secrets, generated database files, or unnecessary build files committed.
-- [ ] Repository is accessible to reviewers; do not make it public if assessment confidentiality rules prohibit this.
-- [ ] All required source and documentation pushed to GitHub.
-- [ ] Submission email sent before 27 October 2026 at 6pm Singapore time.
+- Required user journey works, including real redirects.
+- Submitted strings are preserved; mapping creation does not require shorter output.
+- Unit tests pass and frontend/backend builds succeed.
+- Mobile and keyboard checks completed.
+- Core security protections implemented and findings reviewed.
+- Performance results identify the tested environment and limitations.
+- AI-assisted work is understood, verified, and described honestly.
+- README commands work from a clean checkout.
+- No secrets, generated database files, or unnecessary build files committed.
+- Repository is accessible to reviewers; do not make it public if assessment confidentiality rules prohibit this.
+- All required source and documentation pushed to GitHub.
+- Submission email sent before 27 October 2026 at 6pm Singapore time.
 
 ## Reference documentation
 

@@ -58,6 +58,6 @@ Before first V5 startup, stop the backend and copy the entire `backend/data/` di
 
 ## Verification and references
 
-See [testing.md](testing.md) for clock-controlled unit cases, concurrent reservations, legacy migration/reopen, real API concurrency, and the packaged abrupt-stop/restart check. Dated execution results and limitations are in [verification.md](verification.md). Checks use isolated databases and never open development data.
+See [testing.md](testing.md) for clock-controlled unit cases, concurrent reservations, legacy migration/reopen, database-backed concurrent creation, and the packaged abrupt-stop/restart check. Concurrent service tests do not establish HTTP-server throughput. Dated execution results and limitations are in [verification.md](verification.md). Checks use isolated databases and never open development data.
 
 The bit layout and rollover/clock behavior are based on [Twitter's original Snowflake worker](https://github.com/twitter-archive/snowflake/blob/snowflake-2010/src/main/scala/com/twitter/service/snowflake/IdWorker.scala). X describes the [time-ordered timestamp/worker/sequence structure](https://docs.x.com/fundamentals/x-ids). This is a Java implementation of that allocation model with a custom fixed epoch and durable reservations, not a claim to reproduce X's current internal service.

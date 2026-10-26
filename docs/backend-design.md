@@ -46,8 +46,8 @@ Codes grow as numbers grow, up to 11 characters for a positive Java long. There 
 - `Base62Encoder`: converts an integer to a compact string without truncation, hashing, randomness, or database access.
 - `UrlValidator`: creation-time format, length, and bundled-TLD checks without contacting the destination.
 - `ShortLinkService`: validation, allocation, encoding, verbatim persistence of accepted values, and lookup.
-- `ShortLink`: assigned primary key, unique code, original destination, and timestamp. `Persistable.isNew()` tells Spring Data to insert a newly constructed entity even though its ID is already present. Lifecycle callbacks mark persisted/loaded objects as existing.
-- `ShortLinkRepository`: save and exact-code lookup.
+- `ShortLink`: assigned primary key, unique code, original destination, server creation timestamp, nullable owner ID, and click count. `Persistable.isNew()` tells Spring Data to insert a newly constructed entity even though its ID is already present. Lifecycle callbacks mark persisted/loaded objects as existing.
+- `ShortLinkRepository`: save, exact-code lookup, owner-filtered cursor queries, and atomic click-count increments.
 - Flyway migrations: initialize/upgrade H2 once; Hibernate uses `ddl-auto=validate`.
 
 The ID-source interface is an in-process boundary. It does not introduce another network service or prove horizontal scalability. Embedded H2 remains a single-instance local choice.
@@ -60,7 +60,7 @@ GET redirect resolution performs an atomic `click_count = click_count + 1` updat
 
 ## Persistence, gaps, and failures
 
-H2 is the embedded relational database used by this project. The default `jdbc:h2:file:./data/shortener` stores data in `backend/data/shortener.mv.db` when the backend is launched from `backend/`. Restarting from the same directory with the same database URL preserves mappings, schema history, and sequence state. A `jdbc:h2:mem:...` URL instead uses temporary in-memory storage, as in API/live-browser tests.
+H2 is the embedded relational database used by this project. The default `jdbc:h2:file:./data/shortener` stores data in `backend/data/shortener.mv.db` when the backend is launched from `backend/`. Restarting from the same directory with the same database URL preserves mappings, accounts/counters, schema history, Snowflake settings/reservations, and historical sequence state. Login sessions remain in process memory. A `jdbc:h2:mem:...` URL instead uses temporary in-memory storage, as in API/live-browser tests. Environment variables and direct API examples are in [local-development.md](local-development.md).
 
 For a local backup, stop the backend and copy the whole `backend/data/` directory to a separate location. Restore that stopped database together with a compatible application version; do not combine mappings from one backup with allocator state from another. These local data files are ignored by Git, so committing the source does not back up saved links. A custom `DATABASE_URL` may store data elsewhere.
 
@@ -88,7 +88,7 @@ The migration therefore does the following:
 4. Create a non-cycling sequence above the greater of the largest primary key and the largest decoded legacy code.
 5. Leave existing rows, destinations, timestamps, and public aliases unchanged.
 
-For example, legacy `zzzzzzz` occupies numeric value 3,521,614,606,207. The first new ID must then be at least 3,521,614,606,208, encoded `10000000`. A fresh empty database starts at 1. This reservation deliberately skips unused numbers to avoid a per-request legacy collision check.
+For example, legacy `zzzzzzz` occupies numeric value 3,521,614,606,207. The first V2 sequence ID must then be at least 3,521,614,606,208, encoded `10000000`. V2 initializes an empty database's sequence at 1; V5 retains that sequence as historical state, while production Snowflake IDs depend on elapsed time and the safe legacy floor. This reservation deliberately skips unused numbers to avoid a per-request legacy collision check.
 
 Redirects always query the exact stored alias. They do not decode the incoming code to find an ID: `0000001` and `1` are distinct strings, and old aliases need not equal the encoding of their old primary keys.
 

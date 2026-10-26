@@ -28,7 +28,18 @@ These tests were written and executed by the assistant. Completion of Amanda's t
 
 Migration tests use temporary file-backed H2 databases. API tests use a separate in-memory database. The packaged restart test uses its own temporary file database and an available local port. None opens or migrates `backend/data/shortener.mv.db`.
 
-From `backend/`, run `.\mvnw.cmd test` for the allocator/account/security/validator/unit/API/migration cases, or `.\mvnw.cmd verify` for those cases plus packaging and the process-restart integration test. Recorded counts are in [verification.md](verification.md). On macOS/Linux, use `./mvnw` instead. The packaged test uses worker 7 and the same JDK as Maven, starts two backend processes sequentially, and verifies the saved redirect and a later Snowflake timestamp after restart. It does not require a manually running backend or Google credentials.
+From `backend/`, run `.\mvnw.cmd test` for the allocator/account/security/validator/unit/API/migration cases, or `.\mvnw.cmd verify` for those cases plus packaging and the process-restart integration test. On macOS/Linux or Git Bash, use `bash ./mvnw test` or `bash ./mvnw verify`; the checked-in wrapper does not require an executable bit when invoked through Bash. Recorded counts are in [verification.md](verification.md). The packaged test uses worker 7 and the same JDK as Maven, starts two backend processes sequentially, and verifies the saved redirect and a later Snowflake timestamp after restart. It does not require a manually running backend or Google credentials.
+
+### What the assertions currently establish
+
+- `Base62EncoderTest` checks known values and the maximum positive long; the method named `handlesTheEntirePositiveLongRangeWithoutTruncation` does not enumerate every possible long.
+- `AccountApiTest` injects a test OIDC principal with `oidcLogin()`. It exercises the actual security filters and database, including a session CSRF-token round trip, but does not exchange a valid authorization code with Google. Its expiry case simulates missing authentication; it does not wait for the configured idle timeout. Browser cookie attributes are not asserted by these MockMvc cases.
+- The account pagination case checks page sizes, one older destination, cursor termination, and an invalid cursor. It does not explicitly compare every returned code across both pages to prove non-overlap.
+- The OAuth redirect case checks the Google URL prefix, state/nonce parameter presence, an expected callback-origin substring, and invalid-state failure routing. An exact decoded `redirect_uri` assertion and fuller state/nonce checks would strengthen it; real-provider login remains manual.
+- Concurrent creation and redirect-count tests submit service calls through worker threads against the real database. They check distinct IDs and retained increments, rather than HTTP-server throughput or production capacity.
+- Migration reopen cases exercise temporary file databases and historical upgrade behavior. The old sequence helper is not the production allocator. `SnowflakePersistenceTest` checks the Spring-managed reservation transactions; `ShortLinkRestartIT` separately exercises an actual packaged process stop/restart.
+
+These are coverage boundaries for review, not claims that the complete application has been manually approved. No tests were changed as part of the documentation review.
 
 In Vitest tests, `expect` checks an outcome, `vi.fn()` creates a controllable substitute, and `mockResolvedValue` supplies a fake asynchronous response. React Testing Library queries elements by their accessible role and name; `userEvent` simulates interactions. In Playwright, `page.route` replaces the API only in the isolated browser suite. The live suite has no API interception.
 
@@ -86,6 +97,8 @@ This suite creates a mapping. Use an isolated backend database so it doesn't add
 $env:PORT = '8081'
 $env:PUBLIC_BASE_URL = 'http://127.0.0.1:4173'
 $env:DATABASE_URL = 'jdbc:h2:mem:frontend-check;DB_CLOSE_DELAY=-1'
+$env:GOOGLE_LOGIN_ENABLED = 'false'
+$env:SNOWFLAKE_WORKER_ID = '0'
 java -jar target/url-shortener-0.0.1-SNAPSHOT.jar
 ```
 
@@ -119,11 +132,11 @@ The test requests the short-code route through the local proxy with `maxRedirect
 - [ ] Check browser zoom and long-URL wrapping.
 - [ ] Check the scissors cursor, transparent handle centers, text/wait cursors, and touch-only fallback.
 - [ ] Create several snips, reload, and check newest-first history on desktop/mobile. Copy/remove entries and clear the list; saved backend links should still redirect. Try another tab and check the shared collection on the same frontend origin.
-- [ ] Run the prepared GitHub checks after pushing and inspect their logs.
+- [ ] Inspect the linked passing GitHub run and confirm new runs after application changes.
 - [ ] Configure a real Google OAuth client, sign in with two test accounts, check owner isolation and exact redirects/count updates, then sign out/restart/sign back in. This has not been automated against Google.
 
 ## Workflow references
 
-The frontend job uses a Node 20/24 matrix for component tests and builds; only Node 24 installs Chromium and runs browser checks. This covers the local/CI parser difference that allowed `https://xn--a.com` through the frontend under Node 24. The invalid-domain assertion was correct and remains enabled. Explicit `tr46` IDNA validation now supplies the check rather than relying on `new URL()` alone. Shared fixtures are run by Java and Vitest; a permissive-parser unit regression and actual browser cases exercise the fix. Use Node 24 for development when matching the main CI runtime. Hosted Linux results still require pushing the fix; local Chrome checks run on Windows.
+The frontend job uses a Node 20/24 matrix for component tests and builds; only Node 24 installs Chromium and runs browser checks. This covers the local/CI parser difference that allowed `https://xn--a.com` through the frontend under Node 24. The invalid-domain assertion was correct and remains enabled. Explicit `tr46` IDNA validation now supplies the check rather than relying on `new URL()` alone. Shared fixtures are run by Java and Vitest; a permissive-parser unit regression and actual browser cases exercise the fix. Use Node 24 for development when matching the main CI runtime. The hosted workflow passed for application commit `08e53f7`; see the [verification record](verification.md) for its run link and boundaries. Local Chrome checks ran on Windows.
 
 The workflow uses the documented [checkout action](https://github.com/actions/checkout), [Java setup action](https://github.com/actions/setup-java), and [Node setup action](https://github.com/actions/setup-node). Vite documents [development proxy behavior](https://vite.dev/config/server-options#server-proxy) and [preview proxy behavior](https://vite.dev/config/preview-options.html#preview-proxy). The checked-in workflow runs backend and isolated frontend suites; the live suite remains an explicit local check.
