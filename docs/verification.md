@@ -1,16 +1,28 @@
 # Project verification
 
-The Snowflake/Base62 revision was checked on 25 October 2026 with Java 25/Spring Boot 4.1.2, Node 20.19.5, and installed headless Chrome. Earlier milestones retain their original results and policies. No hosted GitHub CI result or real Google-provider login is claimed.
+The CI URL-validation fix was checked on 26 October 2026 with Java 25/Spring Boot 4.1.2, Node 20.19.5 and 24.22.1, and installed headless Chrome on Windows. Hosted failures were inspected through GitHub's API; the revised workflow still needs a new push for hosted confirmation. Earlier milestones retain their original results and policies. No real Google-provider login is claimed.
 
 ## Latest recorded results
 
 | Check | Result | Boundary |
 | --- | --- | --- |
-| Backend Maven verify | 156 passed: 155 allocator/account/security/validator/unit/API/migration cases plus 1 packaged restart check | Snowflake revision; isolated databases; executable JAR built; account tests use OIDC test principals |
-| Frontend tests | 148 passed across 7 files in the preceding Google-account milestone | Not rerun for this allocator-only change; no frontend implementation changes were needed |
-| Frontend production build | Passed again for Snowflake revision | Builds the existing UI with the user's current page edit |
-| Isolated Chrome browser suite | 36 passed in the preceding Google-account milestone | Not rerun for this allocator-only change; account UI uses stubbed sessions/history |
-| Live Chrome browser suite | 4 passed again against the Snowflake backend | Real guest API/clipboard/redirect, history/validation, session metadata, private-history rejection, expired-account creation protection, and CSRF logout enforcement |
+| Backend Maven verify | 162 passed: 161 unit/API/migration cases plus 1 packaged restart check | Expanded shared Punycode fixtures; isolated databases; executable JAR built |
+| Frontend tests | 155 passed across 7 files on both Node 20.19.5 and Node 24.22.1 | Includes explicit IDNA regressions and a permissive URL-parser simulation |
+| Frontend production build and clean install | Builds passed on Node 20.19.5 and Node 24.22.1; npm ci passed on Node 24 | Pinned runtime IDNA dependency and updated lockfile |
+| Isolated Chrome browser suite | 39 passed under Node 24 with CI=true and two workers | Windows Chrome; invalid Punycode blocked before requests; valid international URL preserved; account/session responses stubbed |
+| Live Chrome browser suite | 4 passed in the preceding Snowflake milestone | Not rerun for this frontend validation fix; backend production code is unchanged |
+
+## CI Punycode validation fix — 26 October 2026
+
+Inspected the latest five failed Project checks runs through GitHub's Actions jobs/check-annotations APIs. Every frontend failure was the shared `https://xn--a.com` case in `src/urlValidation.test.js:53`: expected rejection, received acceptance. The latest [run 40348922311](https://github.com/MeIsAmanda/url-shortener/actions/runs/40348922311) passed its backend job, including Snowflake verification; its frontend component-test step failed and the later build/browser steps were skipped. The earlier [run 40127972909](https://github.com/MeIsAmanda/url-shortener/actions/runs/40127972909) had the same cause. The Ubuntu runner-migration annotation was informational, not the failing step. No deployment job is configured.
+
+Reproduced the exact failure locally with Node 24.22.1 before editing: 75/76 URL-validation cases passed and the same invalid-Punycode assertion failed. Previous local checks used Node 20.19.5, whose URL parser rejected that input. The assertion reflects the existing destination policy and backend behavior; it was retained rather than relaxed or skipped.
+
+The frontend now explicitly validates `xn--` labels with pinned `tr46` 6.0.0 IDNA checks, preserving the original accepted string. This package was already present as a test-toolchain transitive dependency and is now declared as a runtime dependency with an updated lockfile. A permissive-parser unit regression, six additional shared fixture cases (including valid uppercase Punycode), two invalid-domain browser cases, and one valid-Punycode preservation browser case exercise the correction. Backend production code, Snowflake allocation, and migrations are unchanged.
+
+All 155 frontend tests and production builds passed on Node 20 and Node 24. A clean Node 24 npm installation/build also passed; the production JavaScript bundle is about 154 kB gzip, versus about 84 kB before including the IDNA library. This is a build-size observation, not a performance benchmark. All 39 browser cases passed with Node 24, CI concurrency/retry settings, and installed Windows Chrome. All 162 backend checks passed against isolated databases, including the six added shared fixtures and the packaged abrupt-stop/restart check. No development database was opened.
+
+The workflow now runs component tests and builds on Node 20 and 24, with Chromium acceptance checks on Node 24. Node 24 remains the recommended development runtime; the Node 20 job covers the existing compatibility promise. New hosted job names are `Frontend tests and build (Node 20)` and `Frontend tests and build (Node 24)`; any branch rules requiring the previous frontend name need to use the new names after the jobs have appeared. No branch rules, remote commits, pushes, or workflow reruns were performed. The local fix needs committing/pushing before GitHub can run it; rerunning an old commit would execute the old validator again.
 
 ## Snowflake IDs and Base62 — 25 October 2026
 

@@ -43,6 +43,20 @@ for (const [width, height] of [[320, 780], [360, 900], [390, 900], [768, 900], [
   });
 }
 
+test('accepts valid Punycode without changing the submitted destination', async ({ page }) => {
+  const destination = 'https://XN--BCHER-KVA.de/a%20b?q=two+words&x=%2F#Section';
+  await page.route('**/api/urls', async route => {
+    expect(route.request().postDataJSON()).toEqual({ originalUrl: destination });
+    await route.fulfill({ status: 201, json: { originalUrl: destination, shortUrl } });
+  });
+  await page.goto('/');
+  const input = page.getByRole('textbox', { name: 'Put your long URL here!' });
+  await input.fill(destination);
+  await page.getByRole('button', { name: 'Snip my link' }).click();
+  await expect(page.getByRole('link', { name: 'Open link' })).toHaveAttribute('href', shortUrl);
+  await expect(input).toHaveValue(destination);
+});
+
 test('supports keyboard validation and correction without a request for invalid input', async ({ page }) => {
   let requests = 0;
   await page.route('**/api/urls', async (route) => {
@@ -69,6 +83,8 @@ test('supports keyboard validation and correction without a request for invalid 
 for (const [index, [value, message]] of [
   ['ftp://example.com', 'Include http:// or https://'],
   ['https://example.notarealtld', 'recognized ending'],
+  ['https://xn--a.com', 'recognized ending'],
+  ['https://sub.XN--A.com', 'recognized ending'],
   ['https://example.com/?q=%ZZ', 'correctly encoded'],
   ['https://example.com/a b', 'correctly encoded'],
   ['https://example.com/' + 'a'.repeat(2048), '2,048'],

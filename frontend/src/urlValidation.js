@@ -1,4 +1,5 @@
 import tldText from './tlds.txt?raw';
+import tr46 from 'tr46';
 
 export const MAX_URL_LENGTH = 2048;
 const tlds = new Set(tldText.split(/\r?\n/).map(line => line.trim()).filter(line => line && !line.startsWith('#')));
@@ -37,6 +38,14 @@ export function validateDestination(value) {
   const labels = host.split('.');
   if (host.length > 253 || labels.length < 2 || !tlds.has(labels.at(-1).toUpperCase())
       || labels.some(label => !/^[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?$/.test(label))) return domainError;
+  // URL parsers differ in their acceptance of invalid A-labels (e.g. xn--a).
+  // Validate Punycode explicitly, without rewriting the submitted hostname.
+  if (labels.some(label => label.toLowerCase().startsWith('xn--') && tr46.toASCII(label, {
+    checkHyphens: true,
+    checkBidi: true,
+    checkJoiners: true,
+    useSTD3ASCIIRules: true,
+  }) !== label.toLowerCase())) return domainError;
   if (authority[2] && (+authority[2] < 1 || +authority[2] > 65535)) return formatError;
   // Java URI rejects raw brackets in paths; query/fragment brackets are allowed.
   if (/[\[\]]/.test(parts[2] || '')) return formatError;

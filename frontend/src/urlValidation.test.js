@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { completeProtocol, completeProtocolWhileTyping, MAX_URL_LENGTH, validateDestination } from './urlValidation.js';
 import tlds from './tlds.txt?raw';
 
@@ -49,6 +49,12 @@ describe('protocol completion in the UI', () => {
 });
 
 describe('destination policy shared with the backend', () => {
+  it('rejects invalid Punycode even when the host URL parser accepts it', () => {
+    vi.stubGlobal('URL', class PermissiveURL {});
+    expect(validateDestination('https://xn--a.com')).toMatch('recognized ending');
+    expect(validateDestination('https://sub.XN--A.com')).toMatch('recognized ending');
+    expect(validateDestination('https://XN--BCHER-KVA.de/a%20b')).toBeNull();
+  });
   it.each(cases)('accepts=$valid: $input', ({ valid, input }) => {
     expect(validateDestination(input) === null).toBe(valid);
   });

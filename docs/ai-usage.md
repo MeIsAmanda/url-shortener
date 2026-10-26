@@ -1,39 +1,37 @@
-# AI usage and learning notes
-
-The current implementation is Sniply: Java 25/Spring Boot, React, Snowflake IDs followed by Base62 encoding, and Flyway migrations. The fixed epoch is 25 October 2026 00:00 Asia/Singapore; V5 preserves legacy aliases and persists worker timestamp reservations. See [snowflake.md](snowflake.md). New destinations must pass the [URL validation policy](url-validation.md), including HTTP(S), domain/TLD, encoding, and a 2,048-character maximum. Accepted URLs are stored unchanged, without an output-length requirement. See [prompt-template.md](prompt-template.md) for reusable context.
-
 ## Prompt structure
 
 Context → bounded task → constraints → acceptance criteria → expected output → independent verification.
 
 Example prompt:
 
-> Context: Sniply uses Java 25/Spring Boot and React; POST /api/urls creates a mapping and GET /s/{code} redirects. Task: Review destination validation and exact storage of accepted URLs. Constraints: Follow url-validation.md; do not fetch, trim, or normalize destinations; preserve existing aliases. Acceptance criteria: Reject invalid/over-limit input before allocation, preserve accepted encodings and query strings, retain unique Base62 codes, and propagate storage failures. Output: Explain findings and suggest targeted tests. Verification: I will inspect the changes and assertions, then run the relevant checks.
+> Context: Spring Boot URL shortener; POST /api/urls creates a mapping and GET /s/{code} redirects. Task: Review the URL validator for missing cases. Constraints: Do not fetch destinations or alter query strings. Acceptance criteria: Reject unsupported schemes, missing hostnames, credentials, controls, and over-limit input. Preserve valid destinations. Output: Explain findings and suggest targeted tests. Verification: I will inspect changes and run the tests.
 
-## Current decisions to review
+## First milestone decisions to review
 
-- Snowflake combines elapsed milliseconds, worker identity, and a counter before insertion; allocation alone does not create a mapping. Timestamp reservations survive crashes; the previous database sequence is historical state.
-- Base62 encodes that ID; the database still enforces primary-key and code uniqueness. Current codes have variable length, not a fixed seven characters.
-- Allocator/insert failures propagate without a collision retry loop. Unused IDs and skipped reserved timestamps are expected and do not represent saved link rows.
+- Database uniqueness is essential even when random codes make collisions unlikely.
+- Each insert needs its own transaction so a failed collision does not poison a retry.
 - Generated links use configured PUBLIC_BASE_URL instead of the request Host header.
-- New destinations are validated before allocation with a 2,048-character limit. Accepted strings are preserved, and generated links may be longer than the input. Validation does not prove website availability or safety.
-- Flyway migrations preserve existing aliases; file-based H2 data must be backed up with the backend stopped.
-- Test results are assistant-run evidence, not a substitute for Amanda's review. Security scans, load tests, and hosted CI confirmation remain separate work.
-
-The personal logs below retain Amanda's wording. Technical clarification for the earlier research notes: uniqueness depends on coordinated allocation and preserved database state, not Base62 alone. The original random implementation handled insert conflicts through the database constraint and retries; it did not run a pre-insert existence query. See [backend-design.md](backend-design.md) for the architectural corrections.
+- The complete generated link must be shorter, including hostname and port.
+- URL validation does not prove that a destination exists or is safe.
 
 ## Amanda's Work log
-- Provided requirements to GPT (Addition requirements/constraints like prompt framework, load/stress testing)
-- generated backend codes
-- did review on the backend codes and also research on different ways to code
-- generated front end codes
-- connected and uploaded to git
-- review backend and frontend codes
-- removed some unnecessary validation and change the id generation logic
+- Defined the project requirements and constraints for the AI-assisted workflow, including prompt structure, validation rules, and load/stress testing considerations.
+- Researched different URL-shortening approaches and compared trade-offs between random code generation, hash-based generation, and a database-backed ID + Base62 encoding strategy.
+- Reviewed the backend implementation, identified weaknesses in validation and short-code generation, and refined the design to improve reliability.
+- Generated the backend code for URL creation, storage, lookup, and redirect behavior.
+- Generated the frontend interface and connected the client to the API.
+- Reviewed both backend and frontend code for consistency, correctness, and maintainability before finalizing the implementation.
+-Removed unnecessary validation logic and replaced the earlier random short-code approach with a more scalable unique ID-based generation model.
+- Validated the implementation through testing and iterative fixes, and documented the final architecture and decisions.
 
 ## Amanda's time log
-- Worked from 1pm-3pm: Finished generating all backend and frontend codes
-- Worked from 8pm-10pm: Change up the code generation logic
+- Sat 1pm-3pm: Finished generating all backend and frontend codes
+- Sat 8pm-10pm: Change up the code generation logic
+- To note that most of the time is spent waiting for CODEX to finish generating its answers and rerunning its checks.
+- Sat 11pm-12am: Finished updating animations and visuals
+- Sun 2am: added new feature. polished validation. 
+- Sun 3am: added snowflake id generation to scramble the id sequence
+- Mon 11pm: fix and review test cases. make final review of codes and docs
 
 ## Amanda's Personal learning log
 
@@ -49,4 +47,6 @@ Why Base62 Wins
 • High Efficiency: The database never has to run a slow check to see if a short code already exists before creating a new one—it just saves the pair and moves on.
 
 - Previously the logic is generate random code and then check if it is unique, change to get a pre-allocated id sequence from db
-- 
+- Change to getting an id from the db instead.
+- Realized that the codes were sequential
+- Decided to use twitter snowflake id generation to scramble the generated url

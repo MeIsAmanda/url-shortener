@@ -15,7 +15,8 @@
   },
   "dependencies": {
     "react": "19.3.1",
-    "react-dom": "19.3.1"
+    "react-dom": "19.3.1",
+    "tr46": "6.0.0"
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",

@@ -5,6 +5,7 @@ true	HTTPS://Example.COM/a%20b?x=%2F&x=two+words#Section
 true	https://a-b.example.co.uk:8443/a
 true	https://example.technology/?q=%E2%9C%82
 true	https://xn--bcher-kva.de/
+true	https://XN--BCHER-KVA.de/
 true	https://example.xn--p1ai/
 true	https://does-not-exist-987654321.com/
 true	https://example.com/?filter[a]=one&empty=&flag#x/y?z
@@ -44,3 +45,8 @@ false	https://bücher.de/
 false	https://example.com/café
 false	https://aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa.com
 false	https://xn--a.com
+false	https://XN--A.com
+false	https://sub.xn--a.com
+false	https://xn--abc.com
+false	https://xn--0.com
+false	https://xn--bcher-kva.xn--a.com

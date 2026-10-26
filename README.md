@@ -134,11 +134,11 @@ The workflow is already defined in [.github/workflows/checks.yml](.github/workfl
 After the source is pushed, the workflow runs on pushes and pull requests, and supports a manual run from the Actions tab:
 
 - **Backend tests and build:** Java 25, Maven tests, packaging, and the packaged-application restart check (`verify`).
-- **Frontend tests and build:** Node 24, locked dependency installation, component/API-client/account/URL-policy/history tests, build, and thirty-six Chromium browser checks, including account UI/logout, recent-snips scroll containment, protocol completion, URL validation, and animation/reduced-motion behavior. Google identities/session responses are mocked in isolated tests; no Google credentials are needed in CI.
+- **Frontend tests and build:** separate Node 20 and Node 24 jobs install locked dependencies, run component/API-client/account/URL-policy/history tests, and build. The Node 24 job also runs thirty-nine Chromium browser checks, including account UI/logout, recent-snips scroll containment, protocol completion, explicit Punycode validation, and animation/reduced-motion behavior. Google identities/session responses are mocked in isolated tests; no Google credentials are needed in CI.
 
-You do not need to recreate the workflow through GitHub's website. If Actions is disabled by repository or organisation policy, enable or request access there. Requiring the two checks before merging is a separate branch-rules setting you can configure on GitHub after the checks have run. No secrets or deployment credentials are needed for this workflow.
+You do not need to recreate the workflow through GitHub's website. If Actions is disabled by repository or organisation policy, enable or request access there. Requiring the backend check and both Node-version checks before merging is a separate branch-rules setting you can configure on GitHub after the checks have run. If rules already require the old frontend job name, update them to the new matrix job names. No secrets or deployment credentials are needed for this workflow.
 
-The workflow is prepared; confirm the latest revision's results in GitHub after pushing. No hosted result is claimed by this verification record. Optional live browser checks, security scanning, and load tests are not included in CI yet.
+The existing hosted backend job passed; the recent frontend failures were traced to runtime-dependent acceptance of invalid Punycode. The local fix and Node-version matrix need a new push before their hosted result can be confirmed. See [verification.md](docs/verification.md). Optional live browser checks, security scanning, and load tests are not included in CI yet. This workflow performs CI checks; it does not deploy the application.
 
 ## Configuration
 

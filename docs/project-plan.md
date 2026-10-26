@@ -283,7 +283,7 @@ Include required unit tests explicitly; load tests and security scans do not rep
 
 ## 10 Repository and delivery outline
 
-The current repository contains backend/, frontend/, docs/, a root README.md and .gitignore, and .github/workflows/checks.yml. The workflow runs backend verify and frontend tests/build/browser checks. Confirm the latest hosted run after pushing. Add tests/load/ and security/performance reports when those milestones begin; they are not implemented yet.
+The current repository contains backend/, frontend/, docs/, a root README.md and .gitignore, and .github/workflows/checks.yml. The workflow runs backend verify plus frontend tests/build on Node 20 and 24; Node 24 also runs browser checks. The recent hosted backend job passed. The frontend Punycode validation failure has a local fix and expanded regressions; confirm the revised hosted jobs after pushing. Add tests/load/ and security/performance reports when those milestones begin; they are not implemented yet.
 
 The README should cover the app, prerequisites, exact run and test commands, environment settings, persistence, API examples, architecture, validation decisions, desktop/mobile screenshots, known limitations, and links to AI usage, security, and performance notes. A clean checkout should run without private local files.
 

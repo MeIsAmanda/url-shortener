@@ -38,6 +38,8 @@ The backend's `UrlValidator.validate` runs in `ShortLinkService.create` **before
 
 The frontend completes a missing protocol, displays that value, then checks the same policy before starting the scissors animation or making a request; its API client also validates callers and expects a complete URL. The input receives accessible error feedback and focus, retains its value, and can be corrected and retried. Overlong input is rejected rather than silently truncated. Backend validation remains authoritative for clients that bypass the UI.
 
+For hostname labels beginning with `xn--`, the frontend explicitly checks IDNA validity and canonical ASCII spelling using the pinned `tr46` dependency, with hyphen, bidirectional-text, joiner, and STD3 checks enabled. It uses the result only to validate; the submitted URL is never rewritten. This prevents runtime-dependent URL parsers from accepting malformed Punycode such as `xn--a`, while retaining valid encoded international domains. The backend retains its existing Java IDN check. These parsers implement different IDNA generations; shared fixtures verify the documented common cases rather than claiming identical Unicode behavior for every possible label. See the [tr46 API](https://github.com/jsdom/tr46).
+
 Accepted input is saved without normalization. Redirect resolution does not revalidate previously saved destinations. Flyway V1–V3 and the CLOB column remain unchanged, preserving existing links, including those over the new creation limit. No new migration is required for a creation-time rule.
 
 The 2,048-character rule bounds the destination value after JSON parsing; it is not a total HTTP request-body limit. Broader security work and performance measurement remain separate milestones.
