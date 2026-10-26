@@ -93,9 +93,9 @@ Backend checks use isolated databases. The [testing guide](docs/testing.md) expl
 
 ## Limitations and assessment status
 
-The guest flow, account feature, responsive UI, automated checks, and CI are implemented. The verification record separates automated evidence from manual checks still outstanding.
+The guest flow, account feature, responsive UI, automated checks, and CI are implemented. Amanda reported completing the manual review checklist on 27 October 2026, including real Google sign-in, account isolation, and actual-phone checks; see the [verification record](docs/verification.md) for scope and remaining checks.
 
-- Real Google-provider login, actual-phone/mobile Safari, and a manual fresh-machine walkthrough have not been recorded as verified. Browser viewport tests run automatically.
+- A manual fresh-machine walkthrough and specific mobile Safari/screen-reader coverage have not been recorded. Phone portrait/landscape and keyboard-only checks are included in the completed manual checklist.
 - H2 and in-memory sessions are configured for a single backend instance. A restart preserves links and accounts but requires signing in again.
 - Validation checks HTTP(S) syntax, domain/TLD rules, encoded characters, and a 2,048-character maximum; it does not check website availability or destination safety.
 - Full short-URL length depends on the configured hostname; a localhost link can be longer than its destination.

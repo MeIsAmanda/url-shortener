@@ -13,9 +13,9 @@ Complete the required features first. Introduce basic security and a lightweight
 
 ### Current implementation and remaining work
 
-The Snowflake/Base62 backend, Flyway V1–V5 migrations, H2 persistence, Sniply frontend, scissors interaction, optional Google accounts, account link history/creation dates/redirect counts, tests, and GitHub Actions workflow are implemented. The fixed Snowflake epoch is 25 October 2026 00:00 Asia/Singapore. Hosted CI passed for application commit `08e53f7`; the run and local results are in [verification.md](verification.md). Google sign-in still requires the user's OAuth client configuration and a real-provider manual check. Automated results do not establish completion of Amanda's review.
+The Snowflake/Base62 backend, Flyway V1–V5 migrations, H2 persistence, Sniply frontend, scissors interaction, optional Google accounts, account link history/creation dates/redirect counts, tests, and GitHub Actions workflow are implemented. The fixed Snowflake epoch is 25 October 2026 00:00 Asia/Singapore. Hosted CI passed for application commit `08e53f7`; the run and local results are in [verification.md](verification.md). Amanda reported completing the manual review checklist on 27 October 2026, including assertion review, actual-phone checks, real Google sign-in, and the wider account review. Other environments still require OAuth client configuration.
 
-Next: finish reviewing the code and test assertions, check the UI on an actual phone, and perform a manual clean-checkout/submission review. Confirm new GitHub checks when application code changes. Security scanning/hardening and performance measurements remain deferred to their own milestones. Keep the final checklist unchecked until its complete requirement has been confirmed.
+Next: perform a manual clean-checkout/submission review and confirm new GitHub checks when application code changes. Security scanning/hardening and performance measurements remain deferred to their own milestones. The completed testing checklist does not imply that these separate milestones or the entire final submission checklist are complete.
 
 ## 1 Requirements and completion criteria
 

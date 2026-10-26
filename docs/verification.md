@@ -1,6 +1,18 @@
 # Project verification
 
-Local checks for the CI URL-validation fix were run on 26 October 2026 with Java 25/Spring Boot 4.1.2, Node 20.19.5 and 24.22.1, and installed headless Chrome on Windows. On 27 October, GitHub's API confirmed that the revised hosted workflow passed for application commit `08e53f7`. Earlier dated entries retain their historical results and policies; use the latest-results table and [remaining verification](#remaining-verification) for current status. No real Google-provider login is claimed.
+Local checks for the CI URL-validation fix were run on 26 October 2026 with Java 25/Spring Boot 4.1.2, Node 20.19.5 and 24.22.1, and installed headless Chrome on Windows. On 27 October, GitHub's API confirmed that the revised hosted workflow passed for application commit `08e53f7`, and Amanda reported manually verifying real Google sign-in. Earlier dated entries retain their historical results and policies; use the latest dated entries and [remaining verification](#remaining-verification) for current status.
+
+## Manual review checklist completed — 27 October 2026
+
+Amanda reported completing every item in the [manual review checklist](testing.md#manual-review-checklist). This covers assertion review and a deliberate watch-mode test failure/restoration; valid and invalid input, protocol completion, error recovery with a stopped backend, copying and redirects; keyboard-only use, an actual phone in portrait/landscape, zoom, wrapping and cursor behavior; guest history persistence, copy/removal/clearing and cross-tab sharing; GitHub checks review; and real Google sign-in with two-account isolation, redirect/count checks, logout and restart/sign-in history restoration.
+
+The checklist is now ticked based on Amanda's confirmation. This is user-reported manual verification; no device/browser models or new CI run identifiers were supplied, and the assistant did not repeat the checks or run automated suites for this documentation update. Fresh-machine startup, screen-reader review, security scans, load testing, and deployment are outside that checklist and remain separate work.
+
+## Manual Google sign-in confirmation — 27 October 2026
+
+Amanda reported that real Google sign-in is working. This records user-performed manual verification of provider sign-in, rather than an assistant-run test or a mocked OAuth identity. The assistant updated documentation only and did not repeat sign-in or run automated tests for this status update.
+
+This initial confirmation covered sign-in only. Amanda subsequently reported completing the wider manual checklist, as recorded above. Existing automated coverage is unchanged; checks outside that checklist remain separate work.
 
 ## Successful-snip input reset — 27 October 2026
 
@@ -193,4 +205,4 @@ These are assistant-run functional and visual checks; they do not measure animat
 
 ## Remaining verification
 
-Real Google-provider sign-in, actual phone/mobile Safari, browser zoom, on-screen-keyboard and screen-reader review, and a manual fresh-machine startup walkthrough remain unverified. Automated CI performs a checkout and the configured build/test jobs; that does not replace the manual startup walkthrough or user review. Security scans, stress/load tests, and production deployment remain deferred. Automated responsive checks used desktop browsers at the specified viewport widths. Hosted CI is confirmed for the application commit linked in the latest recorded results, rather than pending globally.
+The manual checklist now has Amanda's completion confirmation, including actual-phone portrait/landscape, keyboard-only use, zoom/wrapping, and the wider Google account review. Specific mobile Safari and on-screen-keyboard coverage, screen-reader review, and a manual fresh-machine startup walkthrough have not been separately recorded. Automated CI performs a checkout and the configured build/test jobs; that does not replace the manual startup walkthrough. Security scans, stress/load tests, and production deployment remain deferred. Hosted CI evidence remains tied to the linked application commit; Amanda's checklist confirmation does not supply an additional run identifier.

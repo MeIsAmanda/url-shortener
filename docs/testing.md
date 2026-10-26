@@ -1,6 +1,6 @@
 # Test review guide
 
-These tests were written and executed by the assistant. Completion of Amanda's test review has not been recorded. Treat this guide as a starting point for understanding and challenging the tests, not a sign-off. Suite sizes describe the checked-in cases; dated execution results are in [verification.md](verification.md).
+These automated tests were written and executed by the assistant. Amanda reported completing every item in the manual review checklist on 27 October 2026, including reviewing assertions and observing a deliberate test failure before restoring the expectation. Suite sizes describe the checked-in cases; dated automated results and user-reported manual checks are in [verification.md](verification.md).
 
 ## Suggested review order
 
@@ -124,16 +124,17 @@ The test requests the short-code route through the local proxy with `maxRedirect
 
 ## Manual review checklist
 
-- [ ] Read the assertions and confirm they represent the requirements.
-- [ ] Run component tests in watch mode and inspect at least one failure by temporarily changing expected behavior, then restore it.
-- [ ] Submit valid long/short URLs; confirm accepted encodings remain unchanged. Try a bare domain and verify https:// appears during keyboard entry/paste once the hostname contains a dot, with blur/Enter/button submission as a fallback; explicit http:// should stay unchanged. Try blank input, an unsupported scheme, whitespace, an unknown TLD, malformed escapes, and an over-limit completed URL; confirm helpful errors and correction/retry. Test a stopped backend separately.
-- [ ] Copy and open a generated link; confirm the destination is preserved.
-- [ ] Try keyboard-only use and an actual phone in portrait and landscape.
-- [ ] Check browser zoom and long-URL wrapping.
-- [ ] Check the scissors cursor, transparent handle centers, text/wait cursors, and touch-only fallback.
-- [ ] Create several snips, reload, and check newest-first history on desktop/mobile. Copy/remove entries and clear the list; saved backend links should still redirect. Try another tab and check the shared collection on the same frontend origin.
-- [ ] Inspect the linked passing GitHub run and confirm new runs after application changes.
-- [ ] Configure a real Google OAuth client, sign in with two test accounts, check owner isolation and exact redirects/count updates, then sign out/restart/sign back in. This has not been automated against Google.
+- [x] Read the assertions and confirm they represent the requirements.
+- [x] Run component tests in watch mode and inspect at least one failure by temporarily changing expected behavior, then restore it.
+- [x] Submit valid long/short URLs; confirm accepted encodings remain unchanged. Try a bare domain and verify https:// appears during keyboard entry/paste once the hostname contains a dot, with blur/Enter/button submission as a fallback; explicit http:// should stay unchanged. Try blank input, an unsupported scheme, whitespace, an unknown TLD, malformed escapes, and an over-limit completed URL; confirm helpful errors and correction/retry. Test a stopped backend separately.
+- [x] Copy and open a generated link; confirm the destination is preserved.
+- [x] Try keyboard-only use and an actual phone in portrait and landscape.
+- [x] Check browser zoom and long-URL wrapping.
+- [x] Check the scissors cursor, transparent handle centers, text/wait cursors, and touch-only fallback.
+- [x] Create several snips, reload, and check newest-first history on desktop/mobile. Copy/remove entries and clear the list; saved backend links should still redirect. Try another tab and check the shared collection on the same frontend origin.
+- [x] Inspect the linked passing GitHub run and confirm new runs after application changes.
+- [x] Complete real Google sign-in.
+- [x] Complete the wider account review with two real Google test accounts: check owner isolation and exact redirects/count updates, then sign out/restart/sign back in. Amanda reported manual completion; the automated suites still use simulated Google identities.
 
 ## Workflow references
 
